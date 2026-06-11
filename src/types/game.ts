@@ -80,3 +80,11 @@ export interface ToastMessage {
   message: string;
   points?: number;
 }
+
+export interface ChatMessage {
+  id: string;
+  sender: string;
+  text: string;
+  type: 'correct' | 'incorrect' | 'system';
+  timestamp: number;
+}

@@ -205,6 +205,14 @@ export function registerHandlers(io: Server, socket: Socket): void {
       io.to(code).emit('player_joined', { player, roomState: buildRoomState(updatedRoom) });
       io.to(code).emit('room_updated', buildRoomState(updatedRoom));
 
+      io.to(code).emit('chat_message', {
+        id: Math.random().toString(36).substring(2, 9),
+        sender: 'System',
+        text: `${name} joined the lobby`,
+        type: 'system',
+        timestamp: Date.now(),
+      });
+
       console.log(`[Room] ${name} joined ${code}`);
     } catch (err) {
       socket.emit('error', { message: 'Failed to join room.' });
@@ -244,13 +252,20 @@ export function registerHandlers(io: Server, socket: Socket): void {
       const alreadyFound = rm.getRevealedRanks(code);
       const matchedRank = findMatchingRank(guess, room.roundData.answers, alreadyFound);
 
-      if (matchedRank === null) {
-        socket.emit('guess_result', { success: false, message: 'Not on the list!' });
-        return;
-      }
-
       const player = room.players.find((p) => p.id === socket.id);
       const playerName = player?.name ?? 'Unknown';
+
+      if (matchedRank === null) {
+        socket.emit('guess_result', { success: false, message: 'Not on the list!' });
+        io.to(code).emit('chat_message', {
+          id: Math.random().toString(36).substring(2, 9),
+          sender: playerName,
+          text: guess,
+          type: 'incorrect',
+          timestamp: Date.now(),
+        });
+        return;
+      }
 
       const result = rm.recordReveal(code, matchedRank, socket.id, playerName);
       if (!result) {
@@ -262,6 +277,16 @@ export function registerHandlers(io: Server, socket: Socket): void {
       socket.emit('guess_result', { success: true, message: `#${matchedRank}!`, points, rank: matchedRank });
 
       const updatedRoom = rm.getRoom(code)!;
+      const answerText = updatedRoom.roundData!.answers.find((a) => a.rank === matchedRank)?.answer ?? '';
+
+      io.to(code).emit('chat_message', {
+        id: Math.random().toString(36).substring(2, 9),
+        sender: 'System',
+        text: `${playerName} found #${matchedRank}: "${answerText.toUpperCase()}" (+${points * 1000} pts)`,
+        type: 'correct',
+        timestamp: Date.now(),
+      });
+
       io.to(code).emit('answer_revealed', {
         revealed: updatedRoom.roundData!.revealed[updatedRoom.roundData!.revealed.length - 1],
         allRevealed: updatedRoom.roundData!.revealed,
@@ -349,6 +374,15 @@ export function registerHandlers(io: Server, socket: Socket): void {
           roomState: buildRoomState(updatedRoom),
         });
         io.to(code).emit('room_updated', buildRoomState(updatedRoom));
+        
+        io.to(code).emit('chat_message', {
+          id: Math.random().toString(36).substring(2, 9),
+          sender: 'System',
+          text: `${wasInRoom.name} left the room`,
+          type: 'system',
+          timestamp: Date.now(),
+        });
+
         console.log(`[Room] ${wasInRoom.name} left ${code}`);
       }
     }

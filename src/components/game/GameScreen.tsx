@@ -7,10 +7,11 @@ import { AnswerBoard } from './AnswerBoard';
 import { Timer } from './Timer';
 import { GuessInput } from './GuessInput';
 import { Leaderboard } from './Leaderboard';
+import { GameChat } from './GameChat';
 import { ToastContainer } from '@/components/ui';
 
 export function GameScreen() {
-  const { roundState, roomState, myId, submitGuess, toasts } = useRoom();
+  const { roundState, roomState, myId, submitGuess, toasts, chatMessages } = useRoom();
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [lastRevealedRank, setLastRevealedRank] = useState<number | null>(null);
 
@@ -109,12 +110,21 @@ export function GameScreen() {
             </div>
           </main>
 
-          {/* Desktop leaderboard */}
-          <aside className="hidden lg:flex game-sidebar">
-            <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider border-b border-[var(--border)] pb-2 font-sans">
-              ROOM LEADERBOARD
-            </p>
-            <Leaderboard players={roomState.players} scores={roomState.scores ?? {}} myId={myId} />
+          {/* Desktop leaderboard & Live Feed */}
+          <aside className="hidden lg:flex game-sidebar flex-col h-full justify-between">
+            <div className="flex flex-col gap-3 overflow-y-auto mb-4" style={{ maxHeight: '45%' }}>
+              <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider border-b border-[var(--border)] pb-2 font-sans">
+                ROOM LEADERBOARD
+              </p>
+              <Leaderboard players={roomState.players} scores={roomState.scores ?? {}} myId={myId} />
+            </div>
+            
+            <div className="flex flex-col flex-1 border-t border-[var(--border)] pt-4 gap-3 overflow-hidden">
+              <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider border-b border-[var(--border)] pb-2 font-sans">
+                LIVE FEED
+              </p>
+              <GameChat chatMessages={chatMessages} />
+            </div>
           </aside>
         </div>
 
@@ -126,13 +136,13 @@ export function GameScreen() {
               onClick={() => setShowLeaderboard(true)}
               className="lg:hidden text-xs text-[#1A73E8] hover:text-[#135ab7] transition-colors py-1 mt-1 font-bold"
             >
-              Show Leaderboard ↑
+              Show Feed & Leaderboard ↑
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile leaderboard drawer */}
+      {/* Mobile leaderboard & Chat drawer */}
       <AnimatePresence>
         {showLeaderboard && (
           <>
@@ -151,10 +161,16 @@ export function GameScreen() {
               transition={{ duration: 0.2 }}
             >
               <div className="flex items-center justify-between mb-4 border-b border-[var(--border)] pb-2">
-                <p className="font-bold text-sm text-[#202124]">Scores</p>
+                <p className="font-bold text-sm text-[#202124]">Scores & Live Feed</p>
                 <button onClick={() => setShowLeaderboard(false)} className="text-[#5F6368] text-2xl font-light">×</button>
               </div>
-              <Leaderboard players={roomState.players} scores={roomState.scores ?? {}} myId={myId} />
+              <div className="flex flex-col gap-4">
+                <Leaderboard players={roomState.players} scores={roomState.scores ?? {}} myId={myId} />
+                <div className="border-t border-[var(--border)] pt-4 flex flex-col gap-2">
+                  <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Live Feed</p>
+                  <GameChat chatMessages={chatMessages} />
+                </div>
+              </div>
             </motion.div>
           </>
         )}

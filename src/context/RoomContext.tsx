@@ -4,7 +4,7 @@ import React, { createContext, useContext, useReducer, useEffect, useCallback, u
 import { useSocket } from '@/hooks/useSocket';
 import {
   GameState, Player, RoomState, RoundState,
-  RevealedAnswer, RankedAnswer, GameEndState, RoundEndState, GuessResult, ToastMessage,
+  RevealedAnswer, RankedAnswer, GameEndState, RoundEndState, GuessResult, ToastMessage, ChatMessage,
 } from '@/types/game';
 
 interface RoomStoreState {
@@ -16,6 +16,7 @@ interface RoomStoreState {
   gameEndState: GameEndState | null;
   gameState: GameState;
   toasts: ToastMessage[];
+  chatMessages: ChatMessage[];
   connectionStatus: 'connecting' | 'connected' | 'disconnected';
 }
 
@@ -31,6 +32,7 @@ type Action =
   | { type: 'GAME_END'; payload: GameEndState }
   | { type: 'ADD_TOAST'; toast: ToastMessage }
   | { type: 'REMOVE_TOAST'; id: string }
+  | { type: 'ADD_CHAT_MESSAGE'; message: ChatMessage }
   | { type: 'SET_CONNECTION'; status: 'connecting' | 'connected' | 'disconnected' }
   | { type: 'RESET' };
 
@@ -43,6 +45,7 @@ const initialState: RoomStoreState = {
   gameEndState: null,
   gameState: 'waiting',
   toasts: [],
+  chatMessages: [],
   connectionStatus: 'connecting',
 };
 
@@ -105,6 +108,8 @@ function reducer(state: RoomStoreState, action: Action): RoomStoreState {
       return { ...state, toasts: [...state.toasts.slice(-4), action.toast] };
     case 'REMOVE_TOAST':
       return { ...state, toasts: state.toasts.filter((t) => t.id !== action.id) };
+    case 'ADD_CHAT_MESSAGE':
+      return { ...state, chatMessages: [...state.chatMessages, action.message] };
     case 'SET_CONNECTION':
       return { ...state, connectionStatus: action.status };
     case 'RESET':
@@ -196,6 +201,9 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       }),
       on<{ message: string }>('error', ({ message }) => {
         addToast('error', message);
+      }),
+      on<ChatMessage>('chat_message', (message) => {
+        dispatch({ type: 'ADD_CHAT_MESSAGE', message });
       }),
     ];
 

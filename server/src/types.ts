@@ -146,3 +146,11 @@ export interface AIRankingResult {
     answer: string;
   }>;
 }
+
+export interface ChatMessage {
+  id: string;
+  sender: string;
+  text: string;
+  type: 'correct' | 'incorrect' | 'system';
+  timestamp: number;
+}
