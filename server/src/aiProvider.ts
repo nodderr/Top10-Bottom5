@@ -10,7 +10,7 @@ import { AIRankingResult } from './types';
 import { normalize } from './fuzzyMatcher';
 
 const MAX_RETRIES = 3;
-const MODEL_NAME = 'gemini-2.0-flash';
+const MODEL_NAME = 'gemini-2.5-flash';
 
 let genAI: GoogleGenerativeAI | null = null;
 

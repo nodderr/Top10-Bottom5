@@ -24,12 +24,12 @@ export default function RoomPage() {
     connectionStatus,
   } = useRoom();
 
-  // If we don't have a room state yet (e.g. page refresh), redirect home
+  // If we don't have a room state yet (e.g. page refresh), redirect home with code query param
   useEffect(() => {
     if (connectionStatus === 'connected' && !roomState && roomCode !== code) {
       // Give a grace period in case socket is still setting up
       const timer = setTimeout(() => {
-        if (!roomState) router.push('/');
+        if (!roomState) router.push(`/?code=${code}`);
       }, 3000);
       return () => clearTimeout(timer);
     }
