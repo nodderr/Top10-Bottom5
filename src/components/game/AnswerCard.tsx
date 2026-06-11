@@ -26,26 +26,26 @@ export function AnswerCard({ rank, revealed, isNew = false }: AnswerCardProps) {
 
   return (
     <div
-      className={`flex items-center h-11 border-b border-[var(--border)] transition-colors ${
+      className={`flex items-center gap-4 px-4 h-14 border-b border-[var(--border)] transition-colors ${
         show ? 'bg-[var(--surface)]' : 'bg-transparent'
       }`}
     >
       {/* Rank */}
       <span
-        className="w-8 text-right font-display font-black text-sm flex-shrink-0 pr-1"
+        className="w-7 text-center font-display font-black text-base flex-shrink-0"
         style={{ color: isTop3 ? 'var(--primary)' : 'var(--text-dim)' }}
       >
         {rank}
       </span>
 
       {/* Separator */}
-      <div className="w-px h-4 bg-[var(--border)] mx-3 flex-shrink-0" />
+      <div className="w-px h-5 bg-[var(--border)] flex-shrink-0" />
 
       {/* Answer */}
       <div className="flex-1 min-w-0">
         {show && revealed ? (
           <motion.span
-            className="font-display font-bold text-sm text-[var(--text)] answer-reveal block"
+            className="font-display font-bold text-base text-[var(--text)] answer-reveal block"
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.15 }}
@@ -53,7 +53,7 @@ export function AnswerCard({ rank, revealed, isNew = false }: AnswerCardProps) {
             {revealed.answer}
           </motion.span>
         ) : (
-          <span className="font-display font-bold text-sm text-[var(--text-dim)] select-none tracking-widest">
+          <span className="font-display font-bold text-base text-[var(--text-dim)] select-none tracking-widest block leading-none">
             {'— — — — —'}
           </span>
         )}
@@ -61,7 +61,7 @@ export function AnswerCard({ rank, revealed, isNew = false }: AnswerCardProps) {
 
       {/* Points */}
       <span
-        className={`text-xs font-bold flex-shrink-0 ml-2 w-8 text-right ${
+        className={`text-sm font-bold flex-shrink-0 text-right w-12 ${
           show ? 'text-[var(--text-muted)]' : 'text-[var(--text-dim)]'
         }`}
       >

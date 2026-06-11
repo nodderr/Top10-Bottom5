@@ -38,12 +38,12 @@ export function GameScreen() {
 
       <div className="min-h-screen bg-[var(--bg)] flex flex-col">
         {/* Header */}
-        <div className="border-b border-[var(--border)] px-4 py-3 flex items-center gap-4 bg-[var(--surface)]">
-          <span className="text-xs font-bold text-[var(--text-muted)] flex-shrink-0 uppercase tracking-widest">
-            {roundNumber}/{totalRounds}
+        <div className="border-b border-[var(--border)] px-6 py-4 flex items-center gap-5 bg-[var(--surface)]">
+          <span className="text-sm font-bold text-[var(--text-muted)] flex-shrink-0 uppercase tracking-widest">
+            Round {roundNumber}/{totalRounds}
           </span>
-          <div className="w-px h-4 bg-[var(--border)] flex-shrink-0" />
-          <h2 className="flex-1 font-display font-bold text-sm text-[var(--text)] leading-snug line-clamp-2">
+          <div className="w-px h-5 bg-[var(--border)] flex-shrink-0" />
+          <h2 className="flex-1 font-display font-bold text-lg md:text-xl text-[var(--text)] leading-snug line-clamp-2">
             {category}
           </h2>
           <Timer seconds={timerSeconds} />
@@ -51,45 +51,49 @@ export function GameScreen() {
 
         {/* Body */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Answer board */}
-          <main className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-            {/* Progress */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-[var(--border)]">
-                <div
-                  className="h-px bg-[var(--primary)] transition-all duration-500"
-                  style={{ width: `${(foundCount / 10) * 100}%` }}
-                />
+          {/* Answer board wrapper */}
+          <main className="flex-1 overflow-y-auto p-6 flex justify-center">
+            <div className="w-full max-w-3xl flex flex-col gap-4">
+              {/* Progress */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-1 bg-[var(--border)] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[var(--primary)] transition-all duration-500"
+                    style={{ width: `${(foundCount / 10) * 100}%` }}
+                  />
+                </div>
+                <span className="text-xs font-bold text-[var(--text-muted)] flex-shrink-0">
+                  {foundCount}/10 Found
+                </span>
               </div>
-              <span className="text-xs font-bold text-[var(--text-muted)] flex-shrink-0">
-                {foundCount}/10
-              </span>
-            </div>
 
-            <AnswerBoard
-              revealed={revealed}
-              newlyRevealedRank={lastRevealedRank}
-            />
+              <AnswerBoard
+                revealed={revealed}
+                newlyRevealedRank={lastRevealedRank}
+              />
+            </div>
           </main>
 
           {/* Desktop leaderboard */}
-          <aside className="hidden lg:flex flex-col w-56 border-l border-[var(--border)] p-4 gap-3 overflow-y-auto">
-            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-              Scores
+          <aside className="hidden lg:flex flex-col w-72 border-l border-[var(--border)] p-5 gap-4 overflow-y-auto bg-[var(--surface)]">
+            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest border-b border-[var(--border)] pb-2">
+              Leaderboard
             </p>
             <Leaderboard players={roomState.players} scores={roomState.scores ?? {}} myId={myId} />
           </aside>
         </div>
 
         {/* Bottom */}
-        <div className="border-t border-[var(--border)] bg-[var(--surface)] p-3 flex flex-col gap-2">
-          <GuessInput onGuess={handleGuess} disabled={!isPlaying} />
-          <button
-            onClick={() => setShowLeaderboard(true)}
-            className="lg:hidden text-xs text-[var(--text-muted)] hover:text-[var(--text)] transition-colors py-1"
-          >
-            Scores ↑
-          </button>
+        <div className="border-t border-[var(--border)] bg-[var(--surface)] p-5 flex flex-col items-center">
+          <div className="w-full max-w-3xl flex flex-col gap-2">
+            <GuessInput onGuess={handleGuess} disabled={!isPlaying} />
+            <button
+              onClick={() => setShowLeaderboard(true)}
+              className="lg:hidden text-xs text-[var(--text-muted)] hover:text-[var(--text)] transition-colors py-1 mt-1 font-semibold"
+            >
+              Show Leaderboard ↑
+            </button>
+          </div>
         </div>
       </div>
 

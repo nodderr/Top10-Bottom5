@@ -10,7 +10,7 @@ import { AIRankingResult } from './types';
 import { normalize } from './fuzzyMatcher';
 
 const MAX_RETRIES = 3;
-const MODEL_NAME = 'gemini-2.5-flash';
+const MODEL_NAME = 'gemini-3.5-flash';
 
 let genAI: GoogleGenerativeAI | null = null;
 
@@ -68,14 +68,14 @@ function pickTheme(usedThemes: string[]): string {
 function buildPrompt(theme: string): string {
   return `You are the game master for a viral Indian party game — like Family Feud meets Google Feud, played by young Indians aged 16-35.
 
-Your job: Come up with a SPECIFIC, CREATIVE "Top 10" ranking category within the theme of "${theme}", then rank the Top 10 items.
+Your job: Come up with a simple, unique, and fun "Top 10" ranking category within the theme of "${theme}", then rank the Top 10 items.
 
 RULES FOR THE CATEGORY TITLE:
-- Must be specific and punchy — NOT generic like "Top 10 Indian Foods"
-- Think of titles that make people immediately say "oh THIS is going to cause arguments!"
-- Examples of GOOD titles: "Top 10 Bollywood Villains of All Time", "Top 10 Things Indian Moms Say", "Top 10 Most Overrated Tourist Spots", "Top 10 Dishes That Hit Different at 2am"
-- The title should feel like something a cool podcast would debate
-- Keep it fun, relatable, slightly controversial but not offensive
+- Keep the title simple, direct, and clear — NOT overly complicated, long, or wordy.
+- It should be unique and fun, but easy to read and understand instantly.
+- Examples of GOOD titles: "Top 10 Most Popular Foods in India", "Top 10 Iconic Bollywood Movies", "Top 10 Things Indian Moms Say", "Top 10 Best Indian Cricket Captains", "Top 10 Beautiful Cities in India".
+- Avoid cringe, over-emotional, or overly-specific/weird topics like relationships, "things that make you miss your ex", or overly complex setups.
+- Focus on relatable, culturally relevant topics that spark friendly debate (food, pop culture, cricket, cities, nostalgia).
 
 RULES FOR THE RANKING:
 - Provide EXACTLY 10 answers ranked 1 to 10

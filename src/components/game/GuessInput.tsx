@@ -42,12 +42,12 @@ export function GuessInput({ onGuess, disabled = false }: GuessInputProps) {
         autoComplete="off"
         autoCorrect="off"
         spellCheck={false}
-        className="flex-1 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-4 py-3 text-[var(--text)] placeholder-[var(--text-muted)] outline-none transition-colors focus:border-[var(--primary)] font-display font-semibold text-base disabled:opacity-40"
+        className="flex-1 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl px-5 py-4 text-[var(--text)] placeholder-[var(--text-muted)] outline-none transition-colors focus:border-[var(--primary)] font-display font-semibold text-lg disabled:opacity-40"
       />
       <button
         onClick={submit}
         disabled={disabled || !value.trim()}
-        className="px-5 py-3 rounded-lg font-display font-bold text-sm bg-[var(--primary)] text-[var(--primary-text)] hover:bg-[#e6bf3c] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+        className="px-8 py-4 rounded-xl font-display font-bold text-base bg-[var(--primary)] text-[var(--primary-text)] hover:bg-[#e6bf3c] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
       >
         GUESS
       </button>

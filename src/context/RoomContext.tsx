@@ -24,7 +24,8 @@ type Action =
   | { type: 'SET_ROOM_CODE'; code: string }
   | { type: 'ROOM_UPDATED'; payload: RoomState }
   | { type: 'GAME_STARTED'; payload: Omit<RoundState, 'revealed'> }
-  | { type: 'ANSWER_REVEALED'; revealed: RevealedAnswer[] }
+  | { type: 'ANSWER_REVEALED'; revealed: RevealedAnswer[]; scores: Record<string, number>; players: Player[] }
+  | { type: 'LEADERBOARD_UPDATE'; scores: Record<string, number>; players: Player[] }
   | { type: 'TIMER_UPDATE'; seconds: number }
   | { type: 'ROUND_END'; payload: RoundEndState }
   | { type: 'GAME_END'; payload: GameEndState }
@@ -68,9 +69,19 @@ function reducer(state: RoomStoreState, action: Action): RoomStoreState {
     case 'ANSWER_REVEALED':
       return {
         ...state,
+        roomState: state.roomState
+          ? { ...state.roomState, players: action.players, scores: action.scores }
+          : state.roomState,
         roundState: state.roundState
           ? { ...state.roundState, revealed: action.revealed }
           : state.roundState,
+      };
+    case 'LEADERBOARD_UPDATE':
+      return {
+        ...state,
+        roomState: state.roomState
+          ? { ...state.roomState, players: action.players, scores: action.scores }
+          : state.roomState,
       };
     case 'TIMER_UPDATE':
       return {
@@ -157,8 +168,14 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       }),
       on<{ allRevealed: RevealedAnswer[]; scores: Record<string, number>; players: Player[] }>(
         'answer_revealed',
-        ({ allRevealed }) => {
-          dispatch({ type: 'ANSWER_REVEALED', revealed: allRevealed });
+        ({ allRevealed, scores, players }) => {
+          dispatch({ type: 'ANSWER_REVEALED', revealed: allRevealed, scores, players });
+        }
+      ),
+      on<{ scores: Record<string, number>; players: Player[] }>(
+        'leaderboard_update',
+        ({ scores, players }) => {
+          dispatch({ type: 'LEADERBOARD_UPDATE', scores, players });
         }
       ),
       on<{ secondsRemaining: number }>('timer_update', ({ secondsRemaining }) => {

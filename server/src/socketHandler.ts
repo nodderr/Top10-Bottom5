@@ -23,6 +23,7 @@ function buildRoomState(room: Room) {
     code: room.code,
     state: room.state,
     players: room.players,
+    scores: room.scores,
     totalRounds: room.totalRounds,
     currentRound: room.currentRound,
     hostId: room.hostId,

@@ -15,12 +15,16 @@ function initials(name: string) { return name.slice(0, 2).toUpperCase(); }
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 export function Leaderboard({ players, scores, myId, compact = false }: LeaderboardProps) {
-  const sorted = [...players].sort((a, b) => (scores[b.id] ?? 0) - (scores[a.id] ?? 0));
+  const sorted = [...players].sort((a, b) => {
+    const scoreA = scores[a.id] ?? a.score ?? 0;
+    const scoreB = scores[b.id] ?? b.score ?? 0;
+    return scoreB - scoreA;
+  });
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-1.5">
       {sorted.map((player, i) => {
-        const score = scores[player.id] ?? 0;
+        const score = scores[player.id] ?? player.score ?? 0;
         const isMe = player.id === myId;
 
         return (
