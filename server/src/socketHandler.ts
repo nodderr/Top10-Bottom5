@@ -5,7 +5,6 @@
 import { Server, Socket } from 'socket.io';
 import * as rm from './roomManager';
 import { generateRanking } from './aiProvider';
-import { getRandomCategoryExcluding } from './categories';
 import { findMatchingRank } from './fuzzyMatcher';
 import {
   CreateRoomPayload,
@@ -16,8 +15,8 @@ import {
   Room,
 } from './types';
 
-// Track which categories each room has already used
-const roomUsedCategories = new Map<string, string[]>();
+// Track which theme buckets each room has already used (for variety)
+const roomUsedThemes = new Map<string, string[]>();
 
 function buildRoomState(room: Room) {
   return {
@@ -101,15 +100,13 @@ async function startNewRound(io: Server, room: Room): Promise<void> {
   io.to(roomCode).emit('room_updated', buildRoomState(room));
 
   try {
-    // Pick a category not used in this room yet
-    const usedCats = roomUsedCategories.get(roomCode) ?? [];
-    const category = getRandomCategoryExcluding(usedCats);
+    // Generate — AI freely picks the topic within a random theme bucket
+    const usedThemes = roomUsedThemes.get(roomCode) ?? [];
+    const ranking = await generateRanking(usedThemes);
 
-    // Track used category
-    usedCats.push(category.id);
-    roomUsedCategories.set(roomCode, usedCats);
-
-    const ranking = await generateRanking(category);
+    // Track used theme for variety
+    usedThemes.push(ranking.theme);
+    roomUsedThemes.set(roomCode, usedThemes);
 
     const roundNumber = room.currentRound + 1;
     rm.setRoundData(roomCode, roundNumber, ranking.category, ranking.answers);
@@ -214,7 +211,7 @@ export function registerHandlers(io: Server, socket: Socket): void {
       if (room.state !== 'waiting') { socket.emit('error', { message: 'Game already started.' }); return; }
       if (room.players.length < 1) { socket.emit('error', { message: 'Need at least 1 player to start.' }); return; }
 
-      roomUsedCategories.set(code, []); // reset category tracking
+      roomUsedThemes.set(code, []); // reset theme tracking
       await startNewRound(io, room);
     } catch (err) {
       socket.emit('error', { message: 'Failed to start game.' });
@@ -309,7 +306,7 @@ export function registerHandlers(io: Server, socket: Socket): void {
       room.currentRound = 0;
       room.state = 'waiting';
       room.roundData = undefined;
-      roomUsedCategories.set(code, []);
+      roomUsedThemes.set(code, []);
 
       io.to(code).emit('room_updated', buildRoomState(room));
     } catch (err) {

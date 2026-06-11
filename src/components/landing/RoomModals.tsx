@@ -1,18 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Modal, Button, Input } from '@/components/ui';
 import { useRoom } from '@/hooks/useRoom';
 import { MAX_NAME_LENGTH, DEFAULT_TOTAL_ROUNDS } from '@/lib/constants';
 
-interface CreateRoomModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProps) {
+// ---- Create Room Modal ----
+export function CreateRoomModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [name, setName] = useState('');
   const [rounds, setRounds] = useState(DEFAULT_TOTAL_ROUNDS);
   const [loading, setLoading] = useState(false);
@@ -20,30 +15,19 @@ export function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProps) {
   const router = useRouter();
   const { createRoom, roomCode, roomState } = useRoom();
 
-  // Watch for room creation
-  useState(() => {
+  useEffect(() => {
     if (roomCode && roomState?.state === 'waiting') {
       router.push(`/room/${roomCode}`);
     }
-  });
+  }, [roomCode, roomState?.state, router]);
 
-  const handleCreate = async () => {
-    const trimmed = name.trim();
-    if (!trimmed) { setError('Please enter your display name'); return; }
-    if (trimmed.length < 2) { setError('Name must be at least 2 characters'); return; }
-
+  const handle = () => {
+    const t = name.trim();
+    if (!t || t.length < 2) { setError('Enter at least 2 characters'); return; }
     setLoading(true);
     setError('');
-    createRoom(trimmed, rounds);
-
-    // Navigate after short delay for socket to respond
-    setTimeout(() => {
-      setLoading(false);
-    }, 5000);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleCreate();
+    createRoom(t, rounds);
+    setTimeout(() => setLoading(false), 6000);
   };
 
   return (
@@ -54,26 +38,22 @@ export function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProps) {
           placeholder="e.g. Arjun"
           value={name}
           onChange={(e) => { setName(e.target.value.slice(0, MAX_NAME_LENGTH)); setError(''); }}
-          onKeyDown={handleKeyDown}
+          onKeyDown={(e) => e.key === 'Enter' && handle()}
           error={error}
           autoFocus
-          maxLength={MAX_NAME_LENGTH}
         />
 
-        {/* Rounds selector */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-[var(--text-muted)] uppercase tracking-widest">
-            Rounds
-          </label>
+          <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">Rounds</label>
           <div className="flex gap-2">
             {[1, 2, 3, 5].map((r) => (
               <button
                 key={r}
                 onClick={() => setRounds(r)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all duration-200 ${
+                className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-colors ${
                   rounds === r
-                    ? 'bg-[var(--primary)] text-[#0F1115] border-[var(--primary)]'
-                    : 'bg-[var(--bg-card-elevated)] text-[var(--text-muted)] border-[var(--border)] hover:border-[var(--primary)] hover:text-[var(--text)]'
+                    ? 'bg-[var(--primary)] text-[var(--primary-text)] border-[var(--primary)]'
+                    : 'bg-transparent text-[var(--text-muted)] border-[var(--border)] hover:border-[var(--border-strong)]'
                 }`}
               >
                 {r}
@@ -82,30 +62,21 @@ export function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProps) {
           </div>
         </div>
 
-        <Button
-          onClick={handleCreate}
-          loading={loading}
-          size="lg"
-          className="w-full mt-2"
-        >
+        <Button onClick={handle} loading={loading} size="lg" className="w-full mt-1">
           CREATE ROOM
         </Button>
-
         <p className="text-center text-xs text-[var(--text-muted)]">
-          You&apos;ll get a 6-character room code to share with friends
+          You&apos;ll get a 6-letter code to share
         </p>
       </div>
     </Modal>
   );
 }
 
-interface JoinRoomModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  prefillCode?: string;
-}
-
-export function JoinRoomModal({ isOpen, onClose, prefillCode = '' }: JoinRoomModalProps) {
+// ---- Join Room Modal ----
+export function JoinRoomModal({
+  isOpen, onClose, prefillCode = '',
+}: { isOpen: boolean; onClose: () => void; prefillCode?: string }) {
   const [name, setName] = useState('');
   const [code, setCode] = useState(prefillCode.toUpperCase());
   const [loading, setLoading] = useState(false);
@@ -113,33 +84,23 @@ export function JoinRoomModal({ isOpen, onClose, prefillCode = '' }: JoinRoomMod
   const router = useRouter();
   const { joinRoom, roomCode, roomState } = useRoom();
 
-  useState(() => {
+  useEffect(() => {
     if (roomCode && roomState?.state === 'waiting') {
       router.push(`/room/${roomCode}`);
     }
-  });
+  }, [roomCode, roomState?.state, router]);
 
-  const handleJoin = () => {
-    const trimmedName = name.trim();
-    const trimmedCode = code.trim().toUpperCase();
-    const newErrors: typeof errors = {};
-
-    if (!trimmedName) newErrors.name = 'Please enter your display name';
-    else if (trimmedName.length < 2) newErrors.name = 'Name must be at least 2 characters';
-    if (!trimmedCode) newErrors.code = 'Please enter the room code';
-    else if (trimmedCode.length !== 6) newErrors.code = 'Room code must be 6 characters';
-
-    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
-
+  const handle = () => {
+    const t = name.trim();
+    const c = code.trim().toUpperCase();
+    const e: typeof errors = {};
+    if (!t || t.length < 2) e.name = 'Enter at least 2 characters';
+    if (!c || c.length !== 6) e.code = 'Code must be 6 characters';
+    if (Object.keys(e).length) { setErrors(e); return; }
     setLoading(true);
     setErrors({});
-    joinRoom(trimmedCode, trimmedName);
-
-    setTimeout(() => setLoading(false), 5000);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleJoin();
+    joinRoom(c, t);
+    setTimeout(() => setLoading(false), 6000);
   };
 
   return (
@@ -147,34 +108,27 @@ export function JoinRoomModal({ isOpen, onClose, prefillCode = '' }: JoinRoomMod
       <div className="flex flex-col gap-4">
         <Input
           label="Room Code"
-          placeholder="e.g. ABCD12"
+          placeholder="ABCD12"
           value={code}
           onChange={(e) => {
             setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6));
-            setErrors((prev) => ({ ...prev, code: undefined }));
+            setErrors((p) => ({ ...p, code: undefined }));
           }}
-          onKeyDown={handleKeyDown}
+          onKeyDown={(e) => e.key === 'Enter' && handle()}
           error={errors.code}
-          className="font-display font-bold text-xl tracking-widest text-center"
+          className="font-display font-bold text-2xl tracking-[0.25em] text-center"
           maxLength={6}
+          autoFocus
         />
-
         <Input
           label="Your Name"
           placeholder="e.g. Priya"
           value={name}
-          onChange={(e) => { setName(e.target.value.slice(0, MAX_NAME_LENGTH)); setErrors((prev) => ({ ...prev, name: undefined })); }}
-          onKeyDown={handleKeyDown}
+          onChange={(e) => { setName(e.target.value.slice(0, MAX_NAME_LENGTH)); setErrors((p) => ({ ...p, name: undefined })); }}
+          onKeyDown={(e) => e.key === 'Enter' && handle()}
           error={errors.name}
-          maxLength={MAX_NAME_LENGTH}
         />
-
-        <Button
-          onClick={handleJoin}
-          loading={loading}
-          size="lg"
-          className="w-full mt-2"
-        >
+        <Button onClick={handle} loading={loading} size="lg" className="w-full mt-1">
           JOIN ROOM
         </Button>
       </div>

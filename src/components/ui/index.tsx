@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ============================================================
 // Button
 // ============================================================
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  variant?: 'primary' | 'secondary' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   children: React.ReactNode;
 }
@@ -23,24 +23,18 @@ export function Button({
   ...props
 }: ButtonProps) {
   const base =
-    'inline-flex items-center justify-center font-display font-700 rounded-xl transition-all duration-200 select-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-95';
+    'inline-flex items-center justify-center font-display font-bold tracking-wide cursor-pointer transition-colors duration-150 select-none disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]';
 
   const variants = {
-    primary:
-      'bg-[var(--primary)] text-[#0F1115] hover:brightness-110 hover:shadow-[0_0_24px_var(--primary-glow)] active:brightness-90',
-    secondary:
-      'bg-[var(--bg-card-elevated)] text-[var(--text)] border border-[var(--border)] hover:border-[var(--primary)] hover:text-[var(--primary)]',
-    ghost:
-      'bg-transparent text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-card)]',
-    danger:
-      'bg-[var(--danger)] text-white hover:brightness-110 hover:shadow-[0_0_20px_var(--danger-glow)]',
+    primary:  'bg-[var(--primary)] text-[var(--primary-text)] hover:bg-[#e6bf3c]',
+    secondary: 'bg-transparent text-[var(--text)] border border-[var(--border-strong)] hover:border-[var(--primary)] hover:text-[var(--primary)]',
+    ghost:    'bg-transparent text-[var(--text-muted)] hover:text-[var(--text)]',
   };
 
   const sizes = {
-    sm: 'px-3 py-1.5 text-sm gap-1.5',
-    md: 'px-5 py-2.5 text-base gap-2',
-    lg: 'px-7 py-3.5 text-lg gap-2.5',
-    xl: 'px-10 py-5 text-xl gap-3 tracking-wide',
+    sm: 'px-3 py-1.5 text-sm rounded-md gap-1.5',
+    md: 'px-5 py-2.5 text-sm rounded-lg gap-2',
+    lg: 'px-6 py-3 text-base rounded-lg gap-2',
   };
 
   return (
@@ -54,9 +48,7 @@ export function Button({
           <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
           Loading...
         </>
-      ) : (
-        children
-      )}
+      ) : children}
     </button>
   );
 }
@@ -73,12 +65,12 @@ export function Input({ label, error, className = '', ...props }: InputProps) {
   return (
     <div className="flex flex-col gap-1.5 w-full">
       {label && (
-        <label className="text-sm font-medium text-[var(--text-muted)] uppercase tracking-widest">
+        <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
           {label}
         </label>
       )}
       <input
-        className={`w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text)] placeholder-[var(--text-muted)] outline-none transition-all duration-200 focus:border-[var(--primary)] focus:shadow-[0_0_0_3px_var(--primary-glow)] font-body text-base ${error ? 'border-[var(--danger)]' : ''} ${className}`}
+        className={`w-full bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-4 py-3 text-[var(--text)] placeholder-[var(--text-muted)] outline-none transition-colors focus:border-[var(--primary)] text-base ${error ? 'border-[var(--danger)]' : ''} ${className}`}
         {...props}
       />
       {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
@@ -98,11 +90,8 @@ interface ModalProps {
 
 export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    if (isOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = '';
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
@@ -111,7 +100,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       {isOpen && (
         <>
           <motion.div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/60 z-40"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -119,17 +108,20 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
           />
           <motion.div
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0, scale: 0.92, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ duration: 0.18 }}
           >
-            <div className="glass rounded-2xl w-full max-w-md p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="font-display font-800 text-xl text-[var(--text)]">{title}</h2>
+            <div
+              className="bg-[var(--surface)] border border-[var(--border)] rounded-xl w-full max-w-md p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="font-display font-bold text-lg text-[var(--text)]">{title}</h2>
                 <button
                   onClick={onClose}
-                  className="w-8 h-8 rounded-lg bg-[var(--bg-card-elevated)] text-[var(--text-muted)] hover:text-[var(--text)] flex items-center justify-center text-lg transition-colors"
+                  className="text-[var(--text-muted)] hover:text-[var(--text)] text-xl w-8 h-8 flex items-center justify-center"
                 >
                   ×
                 </button>
@@ -154,25 +146,18 @@ interface ToastProps {
 }
 
 export function Toast({ type, message, points }: ToastProps) {
-  const colors = {
-    success: 'border-[var(--success)] bg-[rgba(61,220,132,0.12)]',
-    error:   'border-[var(--danger)]  bg-[rgba(255,90,90,0.12)]',
-    info:    'border-[var(--primary)] bg-[rgba(255,213,74,0.12)]',
-  };
-  const icons = { success: '✓', error: '✗', info: '★' };
-  const textColors = {
-    success: 'text-[var(--success)]',
-    error:   'text-[var(--danger)]',
-    info:    'text-[var(--primary)]',
+  const styles = {
+    success: 'border-l-[var(--success)] text-[var(--success)]',
+    error:   'border-l-[var(--danger)]  text-[var(--danger)]',
+    info:    'border-l-[var(--primary)] text-[var(--primary)]',
   };
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border glass toast-enter ${colors[type]}`}>
-      <span className={`text-lg font-bold ${textColors[type]}`}>{icons[type]}</span>
+    <div className={`flex items-start gap-3 px-4 py-3 bg-[var(--surface)] border border-[var(--border)] border-l-2 rounded-lg toast-enter ${styles[type]}`}>
       <div>
         <p className="text-sm font-semibold text-[var(--text)]">{message}</p>
         {points !== undefined && (
-          <p className={`text-xs font-bold ${textColors[type]}`}>+{points} points</p>
+          <p className={`text-xs font-bold mt-0.5`}>+{points} pts</p>
         )}
       </div>
     </div>
@@ -182,23 +167,19 @@ export function Toast({ type, message, points }: ToastProps) {
 // ============================================================
 // ToastContainer
 // ============================================================
-interface ToastContainerProps {
-  toasts: ToastProps[];
-}
-
-export function ToastContainer({ toasts }: ToastContainerProps) {
+export function ToastContainer({ toasts }: { toasts: ToastProps[] }) {
   return (
-    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-xs w-full pointer-events-none">
+    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-72 pointer-events-none">
       <AnimatePresence>
-        {toasts.map((toast) => (
+        {toasts.map((t) => (
           <motion.div
-            key={toast.id}
-            initial={{ opacity: 0, x: 80, scale: 0.9 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 80, scale: 0.9 }}
-            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+            key={t.id}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.18 }}
           >
-            <Toast {...toast} />
+            <Toast {...t} />
           </motion.div>
         ))}
       </AnimatePresence>

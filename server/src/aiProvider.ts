@@ -1,14 +1,16 @@
 // ============================================================
-// AI Provider — Gemini Flash integration
-// Generates ranked lists for game categories
+// AI Provider — Gemini 2.0 Flash integration
+// AI freely generates BOTH the topic AND the ranking list.
+// Theme areas are used only as loose inspiration to keep
+// categories culturally relevant and fun for Indian audiences.
 // ============================================================
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { AIRankingResult } from './types';
-import { CategoryConfig } from './categories';
 import { normalize } from './fuzzyMatcher';
 
 const MAX_RETRIES = 3;
+const MODEL_NAME = 'gemini-2.0-flash';
 
 let genAI: GoogleGenerativeAI | null = null;
 
@@ -21,22 +23,70 @@ function getClient(): GoogleGenerativeAI {
   return genAI;
 }
 
-function buildPrompt(category: CategoryConfig): string {
-  return `You are generating content for a fun party game inspired by Family Feud, played by young Indians aged 16-35.
+// Broad theme buckets — AI picks ONE and then freely invents
+// the specific category title and ranking.
+const THEME_BUCKETS = [
+  'Indian food and cuisine',
+  'Indian movies and Bollywood',
+  'Indian cricket and sports',
+  'Indian cities and places',
+  'Indian pop culture and internet trends',
+  'Indian brands and products',
+  'Indian TV shows and web series',
+  'Global superheroes (Marvel and DC)',
+  'Anime and manga',
+  'Video games',
+  'Social media apps and tech',
+  'Cars and motorcycles popular in India',
+  'Indian celebrities and influencers',
+  'Tourist destinations that Indians love',
+  'Nostalgia — things Indian 90s/2000s kids remember',
+  'Fast food and restaurant chains in India',
+  'Indian music — Bollywood songs and artists',
+  'World sports and international teams',
+  'OTT platforms and streaming shows',
+  'Things Indian college students relate to',
+];
 
-Task: ${category.promptTemplate}
+// Keep track of recently used themes per session to add variety
+const recentThemes: string[] = [];
 
-Requirements:
-- Provide EXACTLY 10 answers
-- Answers must be mainstream, widely recognised, and debatable
-- The average Indian 20-year-old should recognise 8+ of these
-- Rankings should feel intuitive but spark debate ("no way that's above that!")
-- Avoid: obscure facts, politics, religion, offensive content, niche references
-- Keep answer names short and clear (1-4 words max)
+function pickTheme(usedThemes: string[]): string {
+  // Exclude recently used themes across all rooms
+  const allUsed = new Set([...usedThemes, ...recentThemes.slice(-5)]);
+  const available = THEME_BUCKETS.filter((t) => !allUsed.has(t));
+  const pool = available.length > 0 ? available : THEME_BUCKETS;
+  const chosen = pool[Math.floor(Math.random() * pool.length)];
 
-Return ONLY valid JSON in this exact format, no markdown, no explanation:
+  // Track globally for variety across rooms
+  recentThemes.push(chosen);
+  if (recentThemes.length > 10) recentThemes.shift();
+
+  return chosen;
+}
+
+function buildPrompt(theme: string): string {
+  return `You are the game master for a viral Indian party game — like Family Feud meets Google Feud, played by young Indians aged 16-35.
+
+Your job: Come up with a SPECIFIC, CREATIVE "Top 10" ranking category within the theme of "${theme}", then rank the Top 10 items.
+
+RULES FOR THE CATEGORY TITLE:
+- Must be specific and punchy — NOT generic like "Top 10 Indian Foods"
+- Think of titles that make people immediately say "oh THIS is going to cause arguments!"
+- Examples of GOOD titles: "Top 10 Bollywood Villains of All Time", "Top 10 Things Indian Moms Say", "Top 10 Most Overrated Tourist Spots", "Top 10 Dishes That Hit Different at 2am"
+- The title should feel like something a cool podcast would debate
+- Keep it fun, relatable, slightly controversial but not offensive
+
+RULES FOR THE RANKING:
+- Provide EXACTLY 10 answers ranked 1 to 10
+- Every answer must be instantly recognisable to the average Indian 20-year-old
+- The ranking should feel intuitive but spark debate — #3 should feel like it could be #1 to someone
+- Avoid: obscure facts, politics, religion, violence, offensive content
+- Keep each answer short: 1-5 words max
+
+Return ONLY valid JSON — no markdown, no explanation, nothing else:
 {
-  "category": "Top 10 [Category Name]",
+  "category": "Top 10 [Your Creative Category Title Here]",
   "answers": [
     { "rank": 1, "answer": "Answer One" },
     { "rank": 2, "answer": "Answer Two" },
@@ -72,15 +122,23 @@ function parseResponse(text: string): AIRankingResult {
   return parsed as AIRankingResult;
 }
 
-export async function generateRanking(category: CategoryConfig): Promise<AIRankingResult> {
+/**
+ * Generate a fresh ranking — AI picks the specific category title
+ * freely within a given broad theme bucket.
+ *
+ * @param usedThemes - Theme bucket IDs already used in this room's session
+ */
+export async function generateRanking(usedThemes: string[] = []): Promise<AIRankingResult & { theme: string }> {
   const client = getClient();
-  const model = client.getGenerativeModel({ model: 'gemini-1.5-flash' });
-  const prompt = buildPrompt(category);
+  const model = client.getGenerativeModel({ model: MODEL_NAME });
+  const theme = pickTheme(usedThemes);
+  const prompt = buildPrompt(theme);
 
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
+      console.log(`[AI] Generating round — theme: "${theme}" (attempt ${attempt})`);
       const result = await model.generateContent(prompt);
       const text = result.response.text();
       const ranking = parseResponse(text);
@@ -91,12 +149,13 @@ export async function generateRanking(category: CategoryConfig): Promise<AIRanki
         normalizedAnswer: normalize(a.answer),
       })) as AIRankingResult['answers'];
 
-      return ranking;
+      console.log(`[AI] Generated: "${ranking.category}"`);
+      return { ...ranking, theme };
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
-      console.error(`AI generation attempt ${attempt} failed:`, lastError.message);
+      console.error(`[AI] Attempt ${attempt} failed:`, lastError.message);
       if (attempt < MAX_RETRIES) {
-        await new Promise((r) => setTimeout(r, 1000 * attempt)); // backoff
+        await new Promise((r) => setTimeout(r, 1000 * attempt)); // exponential backoff
       }
     }
   }
