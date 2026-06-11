@@ -1,0 +1,15 @@
+# Top 10 Bottom 5 — Render Deployment Config
+services:
+  - type: web
+    name: top10-bottom5-server
+    runtime: node
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false   # Set manually in Render dashboard
+      - key: FRONTEND_URL
+        sync: false   # Set to your Vercel URL
+      - key: NODE_ENV
+        value: production
