@@ -12,7 +12,7 @@ export function RoundEndScreen() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!roundEndState) return;
+    if (!roundEndState || !roundEndState.allAnswers) return;
     if (revealedCount < roundEndState.allAnswers.length) {
       const t = setTimeout(() => setRevealedCount((c) => c + 1), 120);
       return () => clearTimeout(t);
@@ -21,7 +21,7 @@ export function RoundEndScreen() {
 
   if (!roundEndState || !roomState) return null;
 
-  const { allAnswers, revealed, scores, players, roundWinnerName, roundNumber, isLastRound } = roundEndState;
+  const { allAnswers = [], revealed = [], scores = {}, players = [], roundWinnerName, roundNumber, isLastRound } = roundEndState;
 
   return (
     <div className="min-h-screen bg-white flex flex-col">

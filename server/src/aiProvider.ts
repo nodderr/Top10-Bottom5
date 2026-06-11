@@ -162,3 +162,67 @@ export async function generateRanking(usedThemes: string[] = []): Promise<AIRank
 
   throw new Error(`AI generation failed after ${MAX_RETRIES} attempts: ${lastError?.message}`);
 }
+
+function buildCustomPrompt(customCategory: string): string {
+  return `You are the game master for a viral Indian party game — like Family Feud meets Google Feud, played by young Indians aged 16-35.
+
+Your job: Rank the Top 10 items for the user's custom category prompt: "${customCategory}".
+
+RULES FOR THE RANKING:
+- Provide EXACTLY 10 answers ranked 1 to 10
+- Every answer must be instantly recognisable to the average Indian 20-year-old
+- The ranking should feel intuitive but spark debate — #3 should feel like it could be #1 to someone
+- Avoid: obscure facts, politics, religion, violence, offensive content
+- Keep each answer short: 1-5 words max
+
+Return ONLY valid JSON — no markdown, no explanation, nothing else:
+{
+  "category": "Top 10 [Your polished title for: ${customCategory}]",
+  "answers": [
+    { "rank": 1, "answer": "Answer One" },
+    { "rank": 2, "answer": "Answer Two" },
+    { "rank": 3, "answer": "Answer Three" },
+    { "rank": 4, "answer": "Answer Four" },
+    { "rank": 5, "answer": "Answer Five" },
+    { "rank": 6, "answer": "Answer Six" },
+    { "rank": 7, "answer": "Answer Seven" },
+    { "rank": 8, "answer": "Answer Eight" },
+    { "rank": 9, "answer": "Answer Nine" },
+    { "rank": 10, "answer": "Answer Ten" }
+  ]
+}`;
+}
+
+export async function generateRankingForCustomPrompt(customPrompt: string): Promise<AIRankingResult & { theme: string }> {
+  const client = getClient();
+  const model = client.getGenerativeModel({ model: MODEL_NAME });
+  const prompt = buildCustomPrompt(customPrompt);
+
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`[AI] Generating custom round — prompt: "${customPrompt}" (attempt ${attempt})`);
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      const ranking = parseResponse(text);
+
+      // Add normalizedAnswer for fuzzy matching
+      ranking.answers = ranking.answers.map((a) => ({
+        ...a,
+        normalizedAnswer: normalize(a.answer),
+      })) as AIRankingResult['answers'];
+
+      console.log(`[AI] Generated custom: "${ranking.category}"`);
+      return { ...ranking, theme: 'custom' };
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      console.error(`[AI] Attempt ${attempt} failed:`, lastError.message);
+      if (attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, 1000 * attempt)); // exponential backoff
+      }
+    }
+  }
+
+  throw new Error(`AI generation failed after ${MAX_RETRIES} attempts: ${lastError?.message}`);
+}

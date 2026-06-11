@@ -4,7 +4,7 @@
 
 import { Server, Socket } from 'socket.io';
 import * as rm from './roomManager';
-import { generateRanking } from './aiProvider';
+import { generateRanking, generateRankingForCustomPrompt } from './aiProvider';
 import { findMatchingRank } from './fuzzyMatcher';
 import {
   CreateRoomPayload,
@@ -70,6 +70,7 @@ function endRound(io: Server, room: Room): void {
   room.lastActivityAt = Date.now();
 
   const payload = {
+    category: room.roundData.category,
     allAnswers: room.roundData.answers,
     revealed: room.roundData.revealed,
     scores: room.scores,
@@ -81,6 +82,7 @@ function endRound(io: Server, room: Room): void {
   };
 
   io.to(room.code).emit('round_end', payload);
+  io.to(room.code).emit('room_updated', buildRoomState(room));
 
   if (isLastRound) {
     const gameWinner = rm.getGameWinner(room.code);
@@ -101,13 +103,21 @@ async function startNewRound(io: Server, room: Room): Promise<void> {
   io.to(roomCode).emit('room_updated', buildRoomState(room));
 
   try {
-    // Generate — AI freely picks the topic within a random theme bucket
-    const usedThemes = roomUsedThemes.get(roomCode) ?? [];
-    const ranking = await generateRanking(usedThemes);
+    const nextRoundIndex = room.currentRound; // 0 for Round 1, 1 for Round 2, etc.
+    let ranking;
 
-    // Track used theme for variety
-    usedThemes.push(ranking.theme);
-    roomUsedThemes.set(roomCode, usedThemes);
+    if (room.customPrompts && room.customPrompts[nextRoundIndex] && room.customPrompts[nextRoundIndex].trim()) {
+      const customPrompt = room.customPrompts[nextRoundIndex].trim();
+      ranking = await generateRankingForCustomPrompt(customPrompt);
+    } else {
+      // Generate — AI freely picks the topic within a random theme bucket
+      const usedThemes = roomUsedThemes.get(roomCode) ?? [];
+      ranking = await generateRanking(usedThemes);
+
+      // Track used theme for variety
+      usedThemes.push(ranking.theme);
+      roomUsedThemes.set(roomCode, usedThemes);
+    }
 
     const roundNumber = room.currentRound + 1;
     rm.setRoundData(roomCode, roundNumber, ranking.category, ranking.answers);
@@ -145,7 +155,7 @@ export function registerHandlers(io: Server, socket: Socket): void {
       }
 
       const totalRounds = Math.min(Math.max(payload.totalRounds ?? 3, 1), 10);
-      const room = rm.createRoom(socket.id, name, totalRounds);
+      const room = rm.createRoom(socket.id, name, totalRounds, payload.customPrompts);
 
       socket.join(room.code);
       socket.emit('room_created', { roomCode: room.code });

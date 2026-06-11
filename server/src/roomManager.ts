@@ -38,7 +38,7 @@ export function pointsForRank(rank: number): number {
 
 // ---- CRUD ----
 
-export function createRoom(hostId: string, hostName: string, totalRounds = 3): Room {
+export function createRoom(hostId: string, hostName: string, totalRounds = 3, customPrompts?: string[]): Room {
   const code = generateUniqueCode();
   const host: Player = {
     id: hostId,
@@ -58,6 +58,7 @@ export function createRoom(hostId: string, hostName: string, totalRounds = 3): R
     state: 'waiting',
     totalRounds,
     currentRound: 0,
+    customPrompts,
     createdAt: Date.now(),
     lastActivityAt: Date.now(),
   };

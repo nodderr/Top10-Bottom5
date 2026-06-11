@@ -10,10 +10,24 @@ import { MAX_NAME_LENGTH, DEFAULT_TOTAL_ROUNDS } from '@/lib/constants';
 export function CreateRoomModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [name, setName] = useState('');
   const [rounds, setRounds] = useState(DEFAULT_TOTAL_ROUNDS);
+  const [isCustomMode, setIsCustomMode] = useState(false);
+  const [customPrompts, setCustomPrompts] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
   const { createRoom, roomCode, roomState } = useRoom();
+
+  useEffect(() => {
+    setCustomPrompts((prev) => {
+      const next = [...prev];
+      if (next.length < rounds) {
+        while (next.length < rounds) next.push('');
+      } else if (next.length > rounds) {
+        next.splice(rounds);
+      }
+      return next;
+    });
+  }, [rounds]);
 
   useEffect(() => {
     if (roomCode && roomState?.state === 'waiting') {
@@ -26,7 +40,7 @@ export function CreateRoomModal({ isOpen, onClose }: { isOpen: boolean; onClose:
     if (!t || t.length < 2) { setError('Enter at least 2 characters'); return; }
     setLoading(true);
     setError('');
-    createRoom(t, rounds);
+    createRoom(t, rounds, isCustomMode ? customPrompts : undefined);
     setTimeout(() => setLoading(false), 6000);
   };
 
@@ -61,6 +75,54 @@ export function CreateRoomModal({ isOpen, onClose }: { isOpen: boolean; onClose:
             ))}
           </div>
         </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">Category Mode</label>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIsCustomMode(false)}
+              className={`flex-1 py-2 text-sm font-bold border rounded-none transition-colors ${
+                !isCustomMode
+                  ? 'bg-[var(--primary)] text-[var(--primary-text)] border-[var(--primary)]'
+                  : 'bg-transparent text-[var(--text-muted)] border-[var(--border)] hover:border-[var(--border-strong)]'
+              }`}
+            >
+              Random AI
+            </button>
+            <button
+              onClick={() => setIsCustomMode(true)}
+              className={`flex-1 py-2 text-sm font-bold border rounded-none transition-colors ${
+                isCustomMode
+                  ? 'bg-[var(--primary)] text-[var(--primary-text)] border-[var(--primary)]'
+                  : 'bg-transparent text-[var(--text-muted)] border-[var(--border)] hover:border-[var(--border-strong)]'
+              }`}
+            >
+              Custom Prompt
+            </button>
+          </div>
+        </div>
+
+        {isCustomMode && (
+          <div className="flex flex-col gap-3 max-h-48 overflow-y-auto border border-[var(--border)] p-3 bg-[var(--surface-2)]">
+            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">Round Prompts</p>
+            {Array.from({ length: rounds }).map((_, idx) => (
+              <Input
+                key={idx}
+                label={`Round ${idx + 1} Prompt`}
+                placeholder="e.g. Top 10 Indian Web Series"
+                value={customPrompts[idx] || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCustomPrompts((prev) => {
+                    const next = [...prev];
+                    next[idx] = val;
+                    return next;
+                  });
+                }}
+              />
+            ))}
+          </div>
+        )}
 
         <Button onClick={handle} loading={loading} size="lg" className="w-full mt-1">
           CREATE ROOM

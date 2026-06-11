@@ -46,6 +46,7 @@ export interface Room {
   state: GameState;
   totalRounds: number;
   currentRound: number;
+  customPrompts?: string[];
   roundData?: RoundData;
   createdAt: number;
   lastActivityAt: number;
@@ -56,6 +57,7 @@ export interface Room {
 export interface CreateRoomPayload {
   playerName: string;
   totalRounds?: number;
+  customPrompts?: string[];
 }
 
 export interface JoinRoomPayload {
