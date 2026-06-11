@@ -24,58 +24,62 @@ export function RoundEndScreen() {
   const { allAnswers, revealed, scores, players, roundWinnerName, roundNumber, isLastRound } = roundEndState;
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <div className="border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3">
-        <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-semibold mb-0.5">
+      <div className="border-b border-[var(--border)] bg-[#F8F9FA] px-6 py-4">
+        <p className="text-xs font-bold text-[#1A73E8] uppercase tracking-widest font-sans mb-0.5">
           Round {roundNumber} — Complete
         </p>
-        <h2 className="font-display font-bold text-base text-[var(--text)]">
+        <h2 className="font-sans font-bold text-lg md:text-xl text-[#202124]">
           {roundEndState.category ?? roundState?.category}
         </h2>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        <main className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-          {/* Round winner */}
-          {roundWinnerName && (
-            <div className="border border-[var(--border)] rounded-lg px-4 py-3 flex items-center gap-3">
-              <span className="text-xl">🏆</span>
-              <div>
-                <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-semibold">Round Winner</p>
-                <p className="font-display font-black text-lg text-[var(--primary)]">{roundWinnerName}</p>
+        <main className="flex-1 overflow-y-auto p-6 md:p-10 flex flex-col items-center">
+          <div className="w-full max-w-3xl flex flex-col gap-5">
+            {/* Round winner */}
+            {roundWinnerName && (
+              <div className="border border-[var(--border)] rounded-none px-5 py-4 flex items-center gap-3 bg-[#F8F9FA]">
+                <span className="text-2xl">🏆</span>
+                <div>
+                  <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Round Winner</p>
+                  <p className="font-sans font-black text-lg text-[#34A853] mt-0.5">{roundWinnerName}</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Full answer reveal */}
-          <AnswerBoard revealed={revealed} allAnswers={allAnswers.slice(0, revealedCount)} />
+            {/* Full answer reveal */}
+            <AnswerBoard revealed={revealed} allAnswers={allAnswers.slice(0, revealedCount)} />
+          </div>
         </main>
 
         {/* Desktop scores */}
-        <aside className="hidden lg:flex flex-col w-56 border-l border-[var(--border)] p-4 gap-3 overflow-y-auto">
-          <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">Scores</p>
+        <aside className="hidden lg:flex flex-col w-72 border-l border-[var(--border)] p-6 gap-4 overflow-y-auto bg-[#F8F9FA]">
+          <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider border-b border-[var(--border)] pb-2 font-sans">ROUND STANDINGS</p>
           <Leaderboard players={players} scores={scores} myId={myId} />
         </aside>
       </div>
 
       {/* Mobile scores */}
-      <div className="lg:hidden px-4 pt-3 pb-1 border-t border-[var(--border)]">
-        <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-2">Scores</p>
+      <div className="lg:hidden px-6 pt-4 pb-2 border-t border-[var(--border)] bg-[#F8F9FA]">
+        <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2 font-sans">STANDINGS</p>
         <Leaderboard players={players} scores={scores} myId={myId} compact />
       </div>
 
       {/* Bottom */}
-      <div className="border-t border-[var(--border)] bg-[var(--surface)] p-3">
-        {isHost ? (
-          <Button onClick={() => { setLoading(true); nextRound(); }} loading={loading} size="lg" className="w-full font-display tracking-widest">
-            {loading ? 'Generating...' : isLastRound ? 'FINAL SCORES →' : `NEXT ROUND (${roundNumber + 1}/${roomState.totalRounds})`}
-          </Button>
-        ) : (
-          <p className="text-center text-sm text-[var(--text-muted)] py-1">
-            Waiting for host...
-          </p>
-        )}
+      <div className="border-t border-[var(--border)] bg-[#F8F9FA] p-5 flex flex-col items-center">
+        <div className="w-full max-w-3xl">
+          {isHost ? (
+            <Button onClick={() => { setLoading(true); nextRound(); }} loading={loading} size="lg" className="w-full font-sans tracking-wider py-4 text-base">
+              {loading ? 'Generating...' : isLastRound ? 'FINAL SCORES →' : `NEXT ROUND (${roundNumber + 1}/${roomState.totalRounds})`}
+            </Button>
+          ) : (
+            <p className="text-center text-sm font-semibold text-[var(--text-muted)] py-2">
+              Waiting for host to advance the game...
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

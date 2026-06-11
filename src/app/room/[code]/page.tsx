@@ -55,7 +55,7 @@ export default function RoomPage() {
           <p className="text-[var(--text-muted)] text-sm">The room may have ended or expired.</p>
           <button
             onClick={() => router.push('/')}
-            className="mt-2 px-6 py-3 rounded-xl bg-[var(--primary)] text-[#0F1115] font-display font-bold text-sm hover:brightness-110 transition-all"
+            className="mt-2 px-6 py-3 rounded-none bg-[var(--primary)] text-white font-display font-bold text-sm hover:brightness-110 transition-all"
           >
             Go Home
           </button>

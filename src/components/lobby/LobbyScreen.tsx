@@ -20,20 +20,20 @@ function PlayerRow({ player, index }: { player: Player; index: number }) {
       transition={{ duration: 0.2, delay: index * 0.04 }}
       className="flex items-center gap-3 py-2.5 border-b border-[var(--border)] last:border-0"
     >
-      {/* Avatar — simple circle */}
-      <div className="w-8 h-8 rounded-full bg-[var(--surface-2)] border border-[var(--border-strong)] flex items-center justify-center font-display font-bold text-xs text-[var(--text-muted)] flex-shrink-0">
+      {/* Avatar — simple square */}
+      <div className="w-8 h-8 rounded-none bg-[var(--surface-2)] border border-[var(--border-strong)] flex items-center justify-center font-display font-bold text-xs text-[var(--text-muted)] flex-shrink-0">
         {initials(player.name)}
       </div>
-
+ 
       <span className="flex-1 text-sm font-medium text-[var(--text)] truncate">
         {player.name}
         {player.isHost && (
-          <span className="ml-2 text-xs text-[var(--primary)] font-bold">HOST</span>
+          <span className="ml-2 text-xs text-[#1A73E8] font-bold">HOST</span>
         )}
       </span>
-
-      {/* Ready dot */}
-      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+ 
+      {/* Ready dot/square */}
+      <div className={`w-2.5 h-2.5 rounded-none flex-shrink-0 ${
         player.isHost || player.isReady
           ? 'bg-[var(--success)]'
           : 'bg-[var(--border-strong)]'
@@ -65,7 +65,7 @@ export function LobbyScreen() {
             Room Code
           </p>
           <button onClick={copyCode} className="group">
-            <span className="font-display font-black text-5xl tracking-[0.2em] text-[var(--primary)]">
+            <span className="font-display font-black text-5xl tracking-[0.2em] text-[#1A73E8]">
               {roomCode}
             </span>
             <p className="text-xs text-[var(--text-muted)] mt-1 group-hover:text-[var(--text)] transition-colors">
@@ -101,8 +101,8 @@ export function LobbyScreen() {
             { label: 'Answers', value: 10 },
             { label: 'Timer', value: '90s' },
           ].map((stat) => (
-            <div key={stat.label} className="flex-1 border border-[var(--border)] rounded-lg py-3">
-              <p className="font-display font-black text-xl text-[var(--primary)]">{stat.value}</p>
+            <div key={stat.label} className="flex-1 border border-[var(--border)] rounded-none py-3">
+              <p className="font-display font-black text-xl text-[#1A73E8]">{stat.value}</p>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">{stat.label}</p>
             </div>
           ))}

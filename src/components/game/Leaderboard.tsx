@@ -43,7 +43,7 @@ export function Leaderboard({ players, scores, myId, compact = false }: Leaderbo
             </span>
 
             {!compact && (
-              <div className="w-7 h-7 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-xs font-bold text-[var(--text-muted)] flex-shrink-0">
+              <div className="w-7 h-7 rounded-none bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-xs font-bold text-[var(--text-muted)] flex-shrink-0">
                 {initials(player.name)}
               </div>
             )}

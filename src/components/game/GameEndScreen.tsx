@@ -14,22 +14,22 @@ export function GameEndScreen() {
   const { scores, players, winnerName } = gameEndState;
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm flex flex-col gap-6">
 
         {/* Winner */}
         <div className="text-center">
-          <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-semibold mb-1">Game Over</p>
-          <p className="text-4xl mb-2">🏆</p>
-          <h1 className="font-display font-black text-3xl text-[var(--primary)]">{winnerName}</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-1">wins the game</p>
+          <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2 font-sans">Game Over</p>
+          <p className="text-5xl mb-3">🏆</p>
+          <h1 className="font-sans font-black text-3xl text-[#1A73E8]">{winnerName}</h1>
+          <p className="text-sm font-semibold text-[var(--text-muted)] mt-1.5">wins the game!</p>
         </div>
 
         <div className="h-px bg-[var(--border)]" />
 
         {/* Final scores */}
         <div>
-          <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-3">Final Scores</p>
+          <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-3 font-sans">Final Scores</p>
           <Leaderboard players={players} scores={scores} myId={myId} />
         </div>
 
@@ -38,15 +38,15 @@ export function GameEndScreen() {
         {/* Actions */}
         <div className="flex flex-col gap-3">
           {isHost && (
-            <Button onClick={playAgain} size="lg" className="w-full font-display tracking-widest">
+            <Button onClick={playAgain} size="lg" className="w-full font-sans tracking-wider py-3.5">
               PLAY AGAIN
             </Button>
           )}
-          <Button onClick={() => router.push('/')} variant="secondary" size="lg" className="w-full font-display tracking-widest">
+          <Button onClick={() => router.push('/')} variant="secondary" size="lg" className="w-full font-sans tracking-wider py-3.5 bg-white border border-[#DADCE0] hover:bg-[#F8F9FA] text-[#202124]">
             HOME
           </Button>
           {!isHost && (
-            <p className="text-center text-xs text-[var(--text-muted)]">
+            <p className="text-center text-xs font-semibold text-[var(--text-muted)] mt-1">
               Waiting for host to restart...
             </p>
           )}

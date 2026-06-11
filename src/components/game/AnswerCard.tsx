@@ -22,51 +22,36 @@ export function AnswerCard({ rank, revealed, isNew = false }: AnswerCardProps) {
   }, [revealed, isNew, show]);
 
   const points = 11 - rank;
-  const isTop3 = rank <= 3;
+  const scoreValue = points * 1000;
 
   return (
     <div
-      className={`flex items-center gap-4 px-4 h-14 border-b border-[var(--border)] transition-colors ${
-        show ? 'bg-[var(--surface)]' : 'bg-transparent'
-      }`}
+      className="answer-card"
     >
-      {/* Rank */}
-      <span
-        className="w-7 text-center font-display font-black text-base flex-shrink-0"
-        style={{ color: isTop3 ? 'var(--primary)' : 'var(--text-dim)' }}
-      >
-        {rank}
-      </span>
-
-      {/* Separator */}
-      <div className="w-px h-5 bg-[var(--border)] flex-shrink-0" />
-
-      {/* Answer */}
-      <div className="flex-1 min-w-0">
-        {show && revealed ? (
-          <motion.span
-            className="font-display font-bold text-base text-[var(--text)] answer-reveal block"
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.15 }}
-          >
+      {show && revealed ? (
+        <motion.div
+          className="flex items-center justify-between w-full"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.15 }}
+        >
+          {/* Answer Text */}
+          <span className="font-sans font-bold text-base text-[#202124] text-left truncate uppercase tracking-wide">
             {revealed.answer}
-          </motion.span>
-        ) : (
-          <span className="font-display font-bold text-base text-[var(--text-dim)] select-none tracking-widest block leading-none">
-            {'— — — — —'}
           </span>
-        )}
-      </div>
-
-      {/* Points */}
-      <span
-        className={`text-sm font-bold flex-shrink-0 text-right w-12 ${
-          show ? 'text-[var(--text-muted)]' : 'text-[var(--text-dim)]'
-        }`}
-      >
-        {points}pt
-      </span>
+          {/* Points */}
+          <span className="font-sans font-bold text-base text-[#1A73E8] flex-shrink-0 ml-2">
+            {scoreValue.toLocaleString()}
+          </span>
+        </motion.div>
+      ) : (
+        /* Centered Rank Badge */
+        <div className="flex items-center justify-center w-full">
+          <span className="bg-[#F1F3F4] text-[#5F6368] font-sans font-bold text-sm w-8 h-8 flex items-center justify-center rounded-none border border-[#DADCE0] select-none">
+            {rank}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

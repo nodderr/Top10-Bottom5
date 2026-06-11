@@ -50,7 +50,7 @@ export function CreateRoomModal({ isOpen, onClose }: { isOpen: boolean; onClose:
               <button
                 key={r}
                 onClick={() => setRounds(r)}
-                className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-colors ${
+                className={`flex-1 py-2 rounded-none text-sm font-bold border transition-colors ${
                   rounds === r
                     ? 'bg-[var(--primary)] text-[var(--primary-text)] border-[var(--primary)]'
                     : 'bg-transparent text-[var(--text-muted)] border-[var(--border)] hover:border-[var(--border-strong)]'

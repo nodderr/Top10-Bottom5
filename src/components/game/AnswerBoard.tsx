@@ -30,15 +30,29 @@ export function AnswerBoard({ revealed, totalAnswers = 10, allAnswers, newlyReve
   }, [allAnswers, revealedMap]);
 
   return (
-    <div className="w-full border border-[var(--border)] rounded-lg overflow-hidden">
-      {Array.from({ length: totalAnswers }, (_, i) => i + 1).map((rank) => (
-        <AnswerCard
-          key={rank}
-          rank={rank}
-          revealed={displayMap.get(rank)}
-          isNew={rank === newlyRevealedRank}
-        />
-      ))}
+    <div className="w-full border border-[var(--border)] grid grid-cols-1 md:grid-cols-2 overflow-hidden bg-white shadow-sm">
+      {/* Left Column (1-5) */}
+      <div className="flex flex-col md:border-r border-[var(--border)]">
+        {[1, 2, 3, 4, 5].map((rank) => (
+          <AnswerCard
+            key={rank}
+            rank={rank}
+            revealed={displayMap.get(rank)}
+            isNew={rank === newlyRevealedRank}
+          />
+        ))}
+      </div>
+      {/* Right Column (6-10) */}
+      <div className="flex flex-col">
+        {[6, 7, 8, 9, 10].map((rank) => (
+          <AnswerCard
+            key={rank}
+            rank={rank}
+            revealed={displayMap.get(rank)}
+            isNew={rank === newlyRevealedRank}
+          />
+        ))}
+      </div>
     </div>
   );
 }
