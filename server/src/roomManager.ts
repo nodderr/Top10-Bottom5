@@ -46,12 +46,18 @@ export function pointsForRank(rank: number): number {
 
 // ---- CRUD ----
 
+export interface AuthedIdentity {
+  userId: string;
+  handle: string;
+}
+
 export function createRoom(
   hostId: string,
   hostName: string,
   totalRounds = 3,
   timerSeconds = 90,
-  customPrompts?: string[]
+  customPrompts?: string[],
+  identity?: AuthedIdentity
 ): Room {
   const code = generateUniqueCode();
   const host: Player = {
@@ -64,6 +70,8 @@ export function createRoom(
     isReady: true,
     disconnected: false,
     joinedAt: Date.now(),
+    userId: identity?.userId,
+    handle: identity?.handle,
   };
 
   const room: Room = {
@@ -104,7 +112,12 @@ export function deleteRoom(code: string): void {
   }
 }
 
-export function addPlayer(code: string, playerId: string, playerName: string): Room | null {
+export function addPlayer(
+  code: string,
+  playerId: string,
+  playerName: string,
+  identity?: AuthedIdentity,
+): Room | null {
   const room = getRoom(code);
   if (!room) return null;
 
@@ -124,6 +137,8 @@ export function addPlayer(code: string, playerId: string, playerName: string): R
     isReady: false,
     disconnected: false,
     joinedAt: Date.now(),
+    userId: identity?.userId,
+    handle: identity?.handle,
   };
 
   room.players.push(player);

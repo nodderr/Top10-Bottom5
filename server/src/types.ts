@@ -15,6 +15,10 @@ export interface Player {
   disconnected: boolean;        // true between socket-disconnect and either rejoin or grace expiry
   disconnectedAt?: number;
   joinedAt: number;
+  // Optional — present when the player was authenticated at join time.
+  // Only authed players participate in ELO calculations + leaderboard.
+  userId?: string;
+  handle?: string;
 }
 
 export interface RankedAnswer {
@@ -54,6 +58,7 @@ export interface Room {
   roundData?: RoundData;
   createdAt: number;
   lastActivityAt: number;
+  gameId?: string;                  // public.games.id, allocated on first round of the game
 }
 
 // ---- Socket event payloads (client → server) ----

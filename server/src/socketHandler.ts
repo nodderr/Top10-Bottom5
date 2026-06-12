@@ -6,6 +6,7 @@ import { Server, Socket } from 'socket.io';
 import * as rm from './roomManager';
 import { generateRanking, generateRankingForCustomPrompt } from './aiProvider';
 import { findMatchingRank } from './fuzzyMatcher';
+import { applyRoundElo, finalizeGame, RoundEloDelta } from './eloWriteback';
 import {
   CreateRoomPayload,
   JoinRoomPayload,
@@ -107,12 +108,12 @@ function startTimer(io: Server, room: Room): void {
 
     if (room.roundData.timerSeconds <= 0) {
       clearInterval(room.roundData.timerInterval);
-      endRound(io, room);
+      void endRound(io, room).catch((err) => console.error('[Timer] endRound failed:', err));
     }
   }, 1000);
 }
 
-function endRound(io: Server, room: Room): void {
+async function endRound(io: Server, room: Room): Promise<void> {
   if (!room.roundData) return;
 
   // Stop timer
@@ -127,6 +128,18 @@ function endRound(io: Server, room: Room): void {
   room.state = isLastRound ? 'game_end' : 'round_end';
   room.lastActivityAt = Date.now();
 
+  // Snapshot per-round scores (players[i].roundScore) for ELO. We use
+  // round-scoped scores, not cumulative — ELO is per-round per the spec.
+  const roundScores: Record<string, number> = {};
+  for (const p of room.players) roundScores[p.id] = p.roundScore ?? 0;
+
+  let eloChanges: RoundEloDelta[] = [];
+  try {
+    eloChanges = await applyRoundElo(room, room.currentRound, roundScores);
+  } catch (err) {
+    console.error('[endRound] applyRoundElo threw:', err);
+  }
+
   const payload = {
     category: room.roundData.category,
     allAnswers: room.roundData.answers,
@@ -137,6 +150,7 @@ function endRound(io: Server, room: Room): void {
     roundWinnerName: roundWinner?.name ?? null,
     roundNumber: room.currentRound,
     isLastRound,
+    eloChanges,
   };
 
   io.to(room.code).emit('round_end', payload);
@@ -150,6 +164,11 @@ function endRound(io: Server, room: Room): void {
       winnerId: gameWinner?.id ?? null,
       winnerName: gameWinner?.name ?? null,
     });
+    try {
+      await finalizeGame(room);
+    } catch (err) {
+      console.error('[endRound] finalizeGame threw:', err);
+    }
   }
 }
 
@@ -226,7 +245,17 @@ export function registerHandlers(io: Server, socket: Socket): void {
             typeof p === 'string' ? p.replace(/[\r\n]+/g, ' ').trim().slice(0, 120) : ''
           )
         : undefined;
-      const room = rm.createRoom(socket.id, name, totalRounds, timerSeconds, sanitizedPrompts);
+      const identity = socket.data.authedUser
+        ? { userId: socket.data.authedUser.userId, handle: socket.data.authedUser.handle }
+        : undefined;
+      const room = rm.createRoom(
+        socket.id,
+        name,
+        totalRounds,
+        timerSeconds,
+        sanitizedPrompts,
+        identity,
+      );
 
       socket.join(room.code);
       const hostPlayer = room.players[0];
@@ -260,7 +289,10 @@ export function registerHandlers(io: Server, socket: Socket): void {
         return;
       }
 
-      const updatedRoom = rm.addPlayer(code, socket.id, name);
+      const identity = socket.data.authedUser
+        ? { userId: socket.data.authedUser.userId, handle: socket.data.authedUser.handle }
+        : undefined;
+      const updatedRoom = rm.addPlayer(code, socket.id, name, identity);
       if (!updatedRoom) {
         socket.emit('error', { message: 'Could not join room.' });
         return;
@@ -425,7 +457,11 @@ export function registerHandlers(io: Server, socket: Socket): void {
           updatedRoom.roundData.timerInterval = undefined;
         }
         updatedRoom.state = 'round_end';
-        setTimeout(() => endRound(io, updatedRoom), 500);
+        setTimeout(() => {
+          void endRound(io, updatedRoom).catch((err) =>
+            console.error('[All-revealed] endRound failed:', err),
+          );
+        }, 500);
       }
     } catch {
       socket.emit('guess_result', { success: false, message: 'Error processing guess.' });
