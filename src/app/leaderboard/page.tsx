@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { pool } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/current-user';
-import { LeaderboardList, LeaderboardEntry } from './LeaderboardList';
+import { LeaderboardEntry } from './LeaderboardList';
+import { LeaderboardClient } from './LeaderboardClient';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Leaderboard — Top 10 Bottom 5' };
@@ -46,8 +47,8 @@ export default async function LeaderboardPage() {
   const [entries, viewer] = await Promise.all([loadEntries(), getCurrentUser()]);
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] bg-dotgrid px-4 py-10 md:py-16">
-      <div className="max-w-3xl mx-auto flex flex-col gap-8">
+    <main className="min-h-screen bg-[var(--bg)] bg-dotgrid px-4 py-10 md:py-12">
+      <div className="max-w-6xl mx-auto flex flex-col gap-6">
         <header className="flex flex-col gap-3">
           <Link
             href="/"
@@ -72,7 +73,7 @@ export default async function LeaderboardPage() {
             </div>
           </div>
           <p className="text-sm font-medium text-[var(--text-muted)]">
-            Top players by FFA ELO. Tap a card to see their all-time peak.
+            Top players by FFA ELO. Click a row to see their rating timeline.
           </p>
         </header>
 
@@ -87,7 +88,7 @@ export default async function LeaderboardPage() {
             </p>
           </div>
         ) : (
-          <LeaderboardList entries={entries} viewerHandle={viewer?.handle ?? null} />
+          <LeaderboardClient entries={entries} viewerHandle={viewer?.handle ?? null} />
         )}
       </div>
     </main>
