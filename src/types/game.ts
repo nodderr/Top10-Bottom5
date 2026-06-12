@@ -11,6 +11,7 @@ export interface Player {
   roundScore: number;
   isHost: boolean;
   isReady: boolean;
+  disconnected?: boolean;
   joinedAt: number;
 }
 

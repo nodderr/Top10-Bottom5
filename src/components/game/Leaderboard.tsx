@@ -35,6 +35,7 @@ export function Leaderboard({ players, scores, myId, compact = false }: Leaderbo
       {sorted.map((player, i) => {
         const score = scores[player.id] ?? player.score ?? 0;
         const isMe = player.id === myId;
+        const offline = player.disconnected === true;
         const color = colorFor(player.id);
 
         return (
@@ -45,7 +46,7 @@ export function Leaderboard({ players, scores, myId, compact = false }: Leaderbo
             transition={{ duration: 0.32, type: 'spring', damping: 22, stiffness: 320 }}
             className={`flex items-center gap-2.5 py-2 border-b border-[var(--border)] last:border-0 ${
               isMe ? 'text-[var(--primary)]' : 'text-[var(--text)]'
-            }`}
+            } ${offline ? 'opacity-50' : ''}`}
           >
             <span className="w-6 text-sm text-center shrink-0">
               {i < 3 ? (

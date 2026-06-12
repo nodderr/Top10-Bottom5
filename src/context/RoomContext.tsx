@@ -1,7 +1,8 @@
 'use client';
 
-import React, { createContext, useReducer, useEffect, useCallback } from 'react';
+import React, { createContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import { useSocket } from '@/hooks/useSocket';
+import { readSession, writeSession, clearSession } from '@/lib/session';
 import {
   GameState, Player, RoomState, RoundState,
   RevealedAnswer, GameEndState, RoundEndState, GuessResult, ToastMessage, ChatMessage,
@@ -34,7 +35,8 @@ type Action =
   | { type: 'REMOVE_TOAST'; id: string }
   | { type: 'ADD_CHAT_MESSAGE'; message: ChatMessage }
   | { type: 'SET_CONNECTION'; status: 'connecting' | 'connected' | 'disconnected' }
-  | { type: 'RESET' };
+  | { type: 'RESET' }
+  | { type: 'RESET_ALL' };
 
 const initialState: RoomStoreState = {
   myId: null,
@@ -122,6 +124,14 @@ function reducer(state: RoomStoreState, action: Action): RoomStoreState {
         roomCode: state.roomCode,
         roomState: state.roomState,
       };
+    case 'RESET_ALL':
+      // Hard reset for leaving the room entirely — drop everything room-scoped
+      // but keep socket identity + connection state.
+      return {
+        ...initialState,
+        myId: state.myId,
+        connectionStatus: state.connectionStatus,
+      };
     default:
       return state;
   }
@@ -135,6 +145,7 @@ interface RoomContextType extends RoomStoreState {
   submitGuess: (guess: string) => void;
   nextRound: () => void;
   playAgain: () => void;
+  leaveRoom: () => void;
   addToast: (type: ToastMessage['type'], message: string, points?: number) => void;
 }
 
@@ -145,6 +156,12 @@ let toastCounter = 0;
 export function RoomProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { emit, on, getId } = useSocket();
+  // Live ref to the playerToken from the most-recent successful create/join/rejoin.
+  // Used to attempt rejoin on every socket reconnect (which assigns a new socket.id).
+  const playerTokenRef = useRef<string | null>(null);
+  // Pending name from create/join — captured at submit, recorded into the session
+  // once the server confirms with a playerToken.
+  const pendingNameRef = useRef<string>('');
 
   const addToast = useCallback((type: ToastMessage['type'], message: string, points?: number) => {
     const id = String(++toastCounter);
@@ -170,6 +187,16 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
         const id = getId();
         if (id) dispatch({ type: 'SET_MY_ID', id });
         dispatch({ type: 'SET_CONNECTION', status: 'connected' });
+        // If we have a stored session, ask the server to rebind us to it.
+        const stored = readSession();
+        if (stored) {
+          playerTokenRef.current = stored.playerToken;
+          pendingNameRef.current = stored.playerName;
+          emit('rejoin_room', {
+            roomCode: stored.roomCode,
+            playerToken: stored.playerToken,
+          });
+        }
       }),
       on<unknown>('disconnect', () => {
         dispatch({ type: 'SET_CONNECTION', status: 'disconnected' });
@@ -177,11 +204,24 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       on<RoomState>('room_updated', (payload) => {
         dispatch({ type: 'ROOM_UPDATED', payload });
       }),
-      on<{ roomCode: string }>('room_created', ({ roomCode }) => {
+      on<{ roomCode: string; playerToken?: string }>('room_created', ({ roomCode, playerToken }) => {
         dispatch({ type: 'SET_ROOM_CODE', code: roomCode });
+        if (playerToken) {
+          playerTokenRef.current = playerToken;
+          writeSession({ roomCode, playerToken, playerName: pendingNameRef.current });
+        }
       }),
-      on<{ roomCode: string }>('room_joined', ({ roomCode }) => {
+      on<{ roomCode: string; playerToken?: string }>('room_joined', ({ roomCode, playerToken }) => {
         dispatch({ type: 'SET_ROOM_CODE', code: roomCode });
+        if (playerToken) {
+          playerTokenRef.current = playerToken;
+          writeSession({ roomCode, playerToken, playerName: pendingNameRef.current });
+        }
+      }),
+      on<{ message: string }>('rejoin_failed', () => {
+        // Stale session — drop it so we don't keep retrying.
+        clearSession();
+        playerTokenRef.current = null;
       }),
       on<Omit<RoundState, 'revealed'>>('game_started', (payload) => {
         dispatch({ type: 'GAME_STARTED', payload });
@@ -227,15 +267,27 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       cleanups.forEach((cleanup) => cleanup());
       clearInterval(checkId);
     };
-  }, [on, getId, addToast]);
+  }, [on, getId, addToast, emit]);
 
   const createRoom = useCallback((playerName: string, totalRounds?: number, timerSeconds?: number, customPrompts?: string[]) => {
+    pendingNameRef.current = playerName;
     emit('create_room', { playerName, totalRounds, timerSeconds, customPrompts });
   }, [emit]);
 
   const joinRoom = useCallback((roomCode: string, playerName: string) => {
+    pendingNameRef.current = playerName;
     emit('join_room', { roomCode: roomCode.toUpperCase(), playerName });
   }, [emit]);
+
+  const leaveRoom = useCallback(() => {
+    if (state.roomCode) {
+      emit('leave_room', { roomCode: state.roomCode });
+    }
+    clearSession();
+    playerTokenRef.current = null;
+    pendingNameRef.current = '';
+    dispatch({ type: 'RESET_ALL' });
+  }, [emit, state.roomCode]);
 
   const startGame = useCallback(() => {
     if (!state.roomCode) return;
@@ -269,6 +321,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     submitGuess,
     nextRound,
     playAgain,
+    leaveRoom,
     addToast,
   };
 

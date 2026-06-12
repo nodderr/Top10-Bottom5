@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRoom } from '@/hooks/useRoom';
 import { AnswerBoard } from './AnswerBoard';
@@ -11,8 +12,16 @@ import { GameChat } from './GameChat';
 import { ToastContainer } from '@/components/ui';
 
 export function GameScreen() {
-  const { roundState, roomState, myId, submitGuess, toasts, chatMessages } = useRoom();
+  const { roundState, roomState, myId, submitGuess, toasts, chatMessages, leaveRoom } = useRoom();
+  const router = useRouter();
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+
+  const handleLeave = () => {
+    if (window.confirm('Leave the room? You will lose your score.')) {
+      leaveRoom();
+      router.push('/');
+    }
+  };
   const [lastRevealedRank, setLastRevealedRank] = useState<number | null>(null);
   const prevRevealedCount = useRef(0);
   const revealedLen = roundState?.revealed.length ?? 0;
@@ -66,6 +75,13 @@ export function GameScreen() {
               Round {roundNumber}
             </span>
             <Timer seconds={timerSeconds} totalSeconds={roomState.timerSeconds ?? 90} />
+            <button
+              onClick={handleLeave}
+              title="Leave room"
+              className="text-[10px] font-display font-bold text-[var(--text-muted)] hover:text-[var(--danger)] uppercase tracking-[0.18em] px-2.5 py-1.5 border border-[var(--border)] hover:border-[var(--danger)] transition-colors hidden md:block"
+            >
+              Exit
+            </button>
           </div>
         </header>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui';
 import { useRoom } from '@/hooks/useRoom';
@@ -19,6 +20,7 @@ function colorFor(id: string) {
 
 function PlayerRow({ player, index, isMe }: { player: Player; index: number; isMe: boolean }) {
   const color = colorFor(player.id);
+  const offline = player.disconnected === true;
   return (
     <motion.div
       layout
@@ -26,27 +28,37 @@ function PlayerRow({ player, index, isMe }: { player: Player; index: number; isM
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.22, delay: index * 0.035, ease: [0.16, 1, 0.3, 1] }}
-      className="flex items-center gap-3 py-2.5 border-b border-[var(--border)] last:border-0"
+      className={`flex items-center gap-3 py-2.5 border-b border-[var(--border)] last:border-0 ${offline ? 'opacity-50' : ''}`}
     >
       <div
         className="w-9 h-9 flex items-center justify-center font-display font-bold text-xs text-white shrink-0"
-        style={{ background: color }}
+        style={{ background: offline ? 'var(--border-strong)' : color }}
       >
         {initials(player.name)}
       </div>
 
-      <span className="flex-1 text-sm font-medium text-[var(--text)] truncate">
-        {player.name}
-        {isMe && <span className="ml-1.5 text-[10px] font-display font-bold text-[var(--text-dim)]">YOU</span>}
+      <span className="flex-1 text-sm font-medium text-[var(--text)] truncate flex items-center gap-1.5 flex-wrap">
+        <span>{player.name}</span>
+        {isMe && (
+          <span className="text-[9px] font-display font-bold text-[var(--text-dim)] tracking-[0.14em] px-1.5 py-0.5 border border-[var(--border)]">
+            YOU
+          </span>
+        )}
         {player.isHost && (
-          <span className="ml-2 text-[10px] font-display font-extrabold tracking-[0.14em] text-[var(--blue)]">
+          <span className="text-[9px] font-display font-extrabold tracking-[0.14em] text-white bg-[var(--blue)] px-1.5 py-0.5">
             HOST
+          </span>
+        )}
+        {offline && (
+          <span className="text-[9px] font-display font-bold tracking-[0.14em] text-[var(--text-dim)] px-1.5 py-0.5 border border-[var(--border)]">
+            OFFLINE
           </span>
         )}
       </span>
 
       <span
         className={`w-2 h-2 shrink-0 ${
+          offline ? 'bg-[var(--border-strong)]' :
           player.isHost || player.isReady ? 'bg-[var(--success)]' : 'bg-[var(--border-strong)]'
         }`}
       />
@@ -55,9 +67,15 @@ function PlayerRow({ player, index, isMe }: { player: Player; index: number; isM
 }
 
 export function LobbyScreen() {
-  const { roomState, roomCode, isHost, myId, startGame } = useRoom();
+  const { roomState, roomCode, isHost, myId, startGame, leaveRoom } = useRoom();
+  const router = useRouter();
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
   const [starting, setStarting] = useState(false);
+
+  const handleLeave = () => {
+    leaveRoom();
+    router.push('/');
+  };
 
   const shareLink = useMemo(() => {
     if (!roomCode || typeof window === 'undefined') return '';
@@ -84,6 +102,13 @@ export function LobbyScreen() {
       <span className="hidden md:block absolute top-12 right-12 w-2 h-2 bg-[var(--red)]" />
       <span className="hidden md:block absolute bottom-12 left-12 w-2 h-2 bg-[var(--yellow)]" />
       <span className="hidden md:block absolute bottom-12 right-12 w-2 h-2 bg-[var(--green)]" />
+
+      <button
+        onClick={handleLeave}
+        className="absolute top-5 left-5 text-[11px] font-display font-bold text-[var(--text-muted)] hover:text-[var(--danger)] uppercase tracking-[0.2em] px-3 py-1.5 border border-[var(--border)] hover:border-[var(--danger)] transition-colors z-20"
+      >
+        ← Leave Room
+      </button>
 
       <div className="w-full max-w-md flex flex-col gap-7 relative z-10">
         {/* Room code card */}

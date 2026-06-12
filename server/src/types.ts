@@ -5,12 +5,15 @@
 export type GameState = 'waiting' | 'generating' | 'playing' | 'round_end' | 'game_end';
 
 export interface Player {
-  id: string;        // socket id
+  id: string;          // CURRENT socket id (rebound on rejoin)
+  token: string;       // stable identity across reconnects, stored client-side
   name: string;
   score: number;
   roundScore: number;
   isHost: boolean;
   isReady: boolean;
+  disconnected: boolean;        // true between socket-disconnect and either rejoin or grace expiry
+  disconnectedAt?: number;
   joinedAt: number;
 }
 
@@ -65,6 +68,15 @@ export interface CreateRoomPayload {
 export interface JoinRoomPayload {
   roomCode: string;
   playerName: string;
+}
+
+export interface RejoinRoomPayload {
+  roomCode: string;
+  playerToken: string;
+}
+
+export interface LeaveRoomPayload {
+  roomCode: string;
 }
 
 export interface SubmitGuessPayload {

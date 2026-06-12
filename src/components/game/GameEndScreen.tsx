@@ -8,12 +8,19 @@ import { Button } from '@/components/ui';
 import { Confetti } from '@/components/ui/Confetti';
 
 export function GameEndScreen() {
-  const { gameEndState, roomState, myId, isHost, playAgain } = useRoom();
+  const { gameEndState, roomState, myId, isHost, playAgain, leaveRoom } = useRoom();
   const router = useRouter();
 
   if (!gameEndState || !roomState) return null;
 
   const { scores, players, winnerName } = gameEndState;
+
+  const handleHome = () => {
+    // Game is over — explicit leave so the session is cleared and the user
+    // gets a clean landing page, not auto-rejoined into the finished game.
+    leaveRoom();
+    router.push('/');
+  };
 
   return (
     <main className="min-h-screen bg-[var(--bg)] bg-dotgrid flex flex-col items-center justify-center px-4 py-10 relative overflow-hidden">
@@ -68,7 +75,7 @@ export function GameEndScreen() {
             </Button>
           )}
           <Button
-            onClick={() => router.push('/')}
+            onClick={handleHome}
             variant="secondary"
             size="lg"
             className="w-full tracking-[0.22em] py-3.5"

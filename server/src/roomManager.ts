@@ -3,10 +3,15 @@
 // No database. All state lives here for the server's lifetime.
 // ============================================================
 
+import { randomUUID } from 'crypto';
 import { Room, Player, GameState, RoundData, RankedAnswer } from './types';
 import { normalize } from './fuzzyMatcher';
 
 const rooms = new Map<string, Room>();
+
+function newPlayerToken(): string {
+  return randomUUID();
+}
 
 // ---- Room code generation ----
 
@@ -51,11 +56,13 @@ export function createRoom(
   const code = generateUniqueCode();
   const host: Player = {
     id: hostId,
+    token: newPlayerToken(),
     name: hostName,
     score: 0,
     roundScore: 0,
     isHost: true,
     isReady: true,
+    disconnected: false,
     joinedAt: Date.now(),
   };
 
@@ -109,11 +116,13 @@ export function addPlayer(code: string, playerId: string, playerName: string): R
 
   const player: Player = {
     id: playerId,
+    token: newPlayerToken(),
     name,
     score: 0,
     roundScore: 0,
     isHost: false,
     isReady: false,
+    disconnected: false,
     joinedAt: Date.now(),
   };
 
@@ -121,6 +130,58 @@ export function addPlayer(code: string, playerId: string, playerName: string): R
   room.scores[playerId] = 0;
   room.lastActivityAt = Date.now();
   return room;
+}
+
+/**
+ * Mark a player as offline (their socket dropped). Does NOT remove them from
+ * the room — the caller schedules removal after a grace period if they don't
+ * return.
+ */
+export function markDisconnected(code: string, socketId: string): Player | null {
+  const room = getRoom(code);
+  if (!room) return null;
+  const player = room.players.find((p) => p.id === socketId);
+  if (!player) return null;
+  player.disconnected = true;
+  player.disconnectedAt = Date.now();
+  room.lastActivityAt = Date.now();
+  return player;
+}
+
+/**
+ * Reattach a returning player to a new socket. Looks them up by their stable
+ * token. Returns the rebound player + room, or null if the token doesn't match
+ * anyone currently in the room.
+ */
+export function rebindPlayer(
+  code: string,
+  token: string,
+  newSocketId: string
+): { room: Room; player: Player } | null {
+  const room = getRoom(code);
+  if (!room) return null;
+  const player = room.players.find((p) => p.token === token);
+  if (!player) return null;
+
+  const oldId = player.id;
+  player.id = newSocketId;
+  player.disconnected = false;
+  player.disconnectedAt = undefined;
+
+  // Re-key the scores map under the new socket id.
+  if (oldId !== newSocketId) {
+    const prevScore = room.scores[oldId] ?? player.score ?? 0;
+    delete room.scores[oldId];
+    room.scores[newSocketId] = prevScore;
+  }
+
+  // Host id stays bound to the host's CURRENT socket.
+  if (room.hostId === oldId) {
+    room.hostId = newSocketId;
+  }
+
+  room.lastActivityAt = Date.now();
+  return { room, player };
 }
 
 export function removePlayer(code: string, playerId: string): Room | null {

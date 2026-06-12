@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useRoom } from '@/hooks/useRoom';
 import { AnswerBoard } from './AnswerBoard';
@@ -9,9 +10,15 @@ import { Button } from '@/components/ui';
 import { Confetti } from '@/components/ui/Confetti';
 
 export function RoundEndScreen() {
-  const { roundEndState, roundState, roomState, myId, isHost, nextRound } = useRoom();
+  const { roundEndState, roundState, roomState, myId, isHost, nextRound, leaveRoom } = useRoom();
+  const router = useRouter();
   const [revealedCount, setRevealedCount] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  const handleLeave = () => {
+    leaveRoom();
+    router.push('/');
+  };
 
   useEffect(() => {
     if (!roundEndState || !roundEndState.allAnswers) return;
@@ -37,13 +44,22 @@ export function RoundEndScreen() {
     <div className="h-screen overflow-hidden bg-[var(--bg)] flex flex-col relative">
       {roundWinnerName && <Confetti count={36} spread={300} duration={2.2} />}
 
-      <header className="border-b border-[var(--border)] bg-[var(--surface)] px-6 md:px-8 py-4 relative z-10">
-        <p className="text-[11px] font-display font-extrabold text-[var(--blue)] uppercase tracking-[0.22em] mb-0.5">
-          Round {roundNumber} — Complete
-        </p>
-        <h2 className="font-display font-bold text-lg md:text-xl text-[var(--text)] truncate">
-          {roundEndState.category ?? roundState?.category}
-        </h2>
+      <header className="border-b border-[var(--border)] bg-[var(--surface)] px-6 md:px-8 py-4 relative z-10 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-display font-extrabold text-[var(--blue)] uppercase tracking-[0.22em] mb-0.5">
+            Round {roundNumber} — Complete
+          </p>
+          <h2 className="font-display font-bold text-lg md:text-xl text-[var(--text)] truncate">
+            {roundEndState.category ?? roundState?.category}
+          </h2>
+        </div>
+        <button
+          onClick={handleLeave}
+          title="Leave room"
+          className="shrink-0 text-[10px] font-display font-bold text-[var(--text-muted)] hover:text-[var(--danger)] uppercase tracking-[0.18em] px-2.5 py-1.5 border border-[var(--border)] hover:border-[var(--danger)] transition-colors"
+        >
+          Exit
+        </button>
       </header>
 
       <div className="flex flex-1 overflow-hidden relative z-10">

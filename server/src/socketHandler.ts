@@ -9,11 +9,28 @@ import { findMatchingRank } from './fuzzyMatcher';
 import {
   CreateRoomPayload,
   JoinRoomPayload,
+  RejoinRoomPayload,
+  LeaveRoomPayload,
   SubmitGuessPayload,
   StartGamePayload,
   NextRoundPayload,
   Room,
 } from './types';
+
+const DISCONNECT_GRACE_MS = 30_000;
+interface PendingRemoval {
+  timer: ReturnType<typeof setTimeout>;
+  code: string;
+}
+const disconnectTimers = new Map<string, PendingRemoval>(); // keyed by player token
+rm.onRoomDeleted((code) => {
+  for (const [token, pending] of disconnectTimers.entries()) {
+    if (pending.code === code) {
+      clearTimeout(pending.timer);
+      disconnectTimers.delete(token);
+    }
+  }
+});
 
 // Track which theme buckets each room has already used (for variety)
 const roomUsedThemes = new Map<string, string[]>();
@@ -212,7 +229,8 @@ export function registerHandlers(io: Server, socket: Socket): void {
       const room = rm.createRoom(socket.id, name, totalRounds, timerSeconds, sanitizedPrompts);
 
       socket.join(room.code);
-      socket.emit('room_created', { roomCode: room.code });
+      const hostPlayer = room.players[0];
+      socket.emit('room_created', { roomCode: room.code, playerToken: hostPlayer.token });
       socket.emit('room_updated', buildRoomState(room));
 
       console.log(`[Room] Created ${room.code} by ${name}`);
@@ -249,10 +267,10 @@ export function registerHandlers(io: Server, socket: Socket): void {
       }
 
       socket.join(code);
-      socket.emit('room_joined', { roomCode: code });
+      const newPlayer = updatedRoom.players.find((p) => p.id === socket.id);
+      socket.emit('room_joined', { roomCode: code, playerToken: newPlayer?.token ?? '' });
 
-      const player = updatedRoom.players.find((p) => p.id === socket.id);
-      io.to(code).emit('player_joined', { player, roomState: buildRoomState(updatedRoom) });
+      io.to(code).emit('player_joined', { player: newPlayer, roomState: buildRoomState(updatedRoom) });
       io.to(code).emit('room_updated', buildRoomState(updatedRoom));
 
       // Mid-game join — replay the events the joiner missed so they land in the
@@ -453,46 +471,181 @@ export function registerHandlers(io: Server, socket: Socket): void {
     }
   });
 
+  // ---- rejoin_room ----
+  // Player refreshed / reconnected / momentarily lost network. They send back
+  // the playerToken we issued at create/join time; we rebind their Player
+  // record to the new socket and replay the relevant state events.
+  socket.on('rejoin_room', (payload: RejoinRoomPayload) => {
+    try {
+      const code = (payload.roomCode ?? '').trim().toUpperCase();
+      const token = (payload.playerToken ?? '').trim();
+      if (!code || !token) {
+        socket.emit('rejoin_failed', { message: 'Missing room code or token.' });
+        return;
+      }
+
+      const result = rm.rebindPlayer(code, token, socket.id);
+      if (!result) {
+        socket.emit('rejoin_failed', { message: 'Session no longer valid.' });
+        return;
+      }
+
+      const { room, player } = result;
+
+      // Cancel any pending removal for this player.
+      const pending = disconnectTimers.get(token);
+      if (pending) {
+        clearTimeout(pending.timer);
+        disconnectTimers.delete(token);
+      }
+
+      socket.join(code);
+      socket.emit('room_joined', { roomCode: code, playerToken: token });
+
+      io.to(code).emit('room_updated', buildRoomState(room));
+
+      // Replay the screen-relevant events to the rejoining socket so they land
+      // in the right screen with full context (same logic as mid-game join).
+      if (room.state !== 'waiting' && room.roundData) {
+        const rd = room.roundData;
+        if (room.state === 'playing' || room.state === 'generating') {
+          socket.emit('game_started', {
+            category: rd.category,
+            totalAnswers: 10,
+            roundNumber: rd.roundNumber,
+            totalRounds: room.totalRounds,
+            timerSeconds: rd.timerSeconds,
+          });
+          if (rd.revealed.length > 0) {
+            socket.emit('answer_revealed', {
+              revealed: rd.revealed[rd.revealed.length - 1],
+              allRevealed: rd.revealed,
+              scores: room.scores,
+              players: room.players,
+            });
+          }
+        } else if (room.state === 'round_end' || room.state === 'game_end') {
+          const roundWinner = rm.getRoundWinner(code);
+          const isLastRound = room.currentRound >= room.totalRounds;
+          socket.emit('round_end', {
+            category: rd.category,
+            allAnswers: rd.answers,
+            revealed: rd.revealed,
+            scores: room.scores,
+            players: room.players,
+            roundWinnerId: roundWinner?.id ?? null,
+            roundWinnerName: roundWinner?.name ?? null,
+            roundNumber: room.currentRound,
+            isLastRound,
+          });
+          if (room.state === 'game_end') {
+            const gameWinner = rm.getGameWinner(code);
+            socket.emit('game_end', {
+              scores: room.scores,
+              players: room.players,
+              winnerId: gameWinner?.id ?? null,
+              winnerName: gameWinner?.name ?? null,
+            });
+          }
+        }
+      }
+
+      console.log(`[Room] ${player.name} rejoined ${code}`);
+    } catch {
+      socket.emit('rejoin_failed', { message: 'Failed to rejoin room.' });
+    }
+  });
+
+  // ---- leave_room ----
+  socket.on('leave_room', (payload: LeaveRoomPayload) => {
+    try {
+      const code = (payload.roomCode ?? '').trim().toUpperCase();
+      const room = rm.getRoom(code);
+      if (!room) return;
+      const player = room.players.find((p) => p.id === socket.id);
+      if (!player) return;
+
+      // Cancel any pending removal timer for them (in case they were briefly disconnected first).
+      const pending = disconnectTimers.get(player.token);
+      if (pending) {
+        clearTimeout(pending.timer);
+        disconnectTimers.delete(player.token);
+      }
+
+      finalizeRemoval(io, code, player.id, player.name, 'left the room');
+      socket.leave(code);
+    } catch {
+      // Best-effort: leaving should never bubble an error to the user.
+    }
+  });
+
   // ---- disconnect ----
+  // Don't remove immediately — mark them as offline and give them a grace
+  // window to reconnect (refresh, brief network blip). After the grace expires,
+  // finalize their removal.
   socket.on('disconnect', () => {
-    // Drop per-socket rate-limit state
     guessBuckets.delete(socket.id);
     createRoomLastAt.delete(socket.id);
 
-    // Find all rooms this socket was in and remove them
     for (const [code, room] of rm.getAllRooms().entries()) {
-      const wasInRoom = room.players.find((p) => p.id === socket.id);
-      if (!wasInRoom) continue;
+      const player = room.players.find((p) => p.id === socket.id);
+      if (!player) continue;
 
-      const updatedRoom = rm.removePlayer(code, socket.id);
-      if (!updatedRoom) continue;
+      const marked = rm.markDisconnected(code, socket.id);
+      if (!marked) continue;
 
-      if (updatedRoom.players.length === 0) {
-        // Empty room — clean up
-        if (updatedRoom.roundData?.timerInterval) {
-          clearInterval(updatedRoom.roundData.timerInterval);
-        }
-        rm.deleteRoom(code);
-        roomUsedThemes.delete(code);
-        console.log(`[Room] ${code} deleted (empty)`);
-      } else {
-        io.to(code).emit('player_left', {
-          playerId: socket.id,
-          playerName: wasInRoom.name,
-          roomState: buildRoomState(updatedRoom),
-        });
-        io.to(code).emit('room_updated', buildRoomState(updatedRoom));
-        
-        io.to(code).emit('chat_message', {
-          id: Math.random().toString(36).substring(2, 9),
-          sender: 'System',
-          text: `${wasInRoom.name} left the room`,
-          type: 'system',
-          timestamp: Date.now(),
-        });
+      io.to(code).emit('room_updated', buildRoomState(room));
 
-        console.log(`[Room] ${wasInRoom.name} left ${code}`);
-      }
+      const timer = setTimeout(() => {
+        disconnectTimers.delete(player.token);
+        const room2 = rm.getRoom(code);
+        if (!room2) return;
+        const p2 = room2.players.find((p) => p.token === player.token);
+        if (!p2 || !p2.disconnected) return; // they came back
+        finalizeRemoval(io, code, p2.id, p2.name, 'left the room');
+      }, DISCONNECT_GRACE_MS);
+      disconnectTimers.set(player.token, { timer, code });
+
+      console.log(`[Room] ${player.name} disconnected from ${code} (grace ${DISCONNECT_GRACE_MS / 1000}s)`);
     }
   });
+}
+
+/**
+ * Actually remove a player from a room and broadcast. Used by leave_room and
+ * by the disconnect grace timer when the player doesn't return.
+ */
+function finalizeRemoval(
+  io: Server,
+  code: string,
+  playerId: string,
+  playerName: string,
+  reason: string
+): void {
+  const updatedRoom = rm.removePlayer(code, playerId);
+  if (!updatedRoom) return;
+
+  if (updatedRoom.players.length === 0) {
+    if (updatedRoom.roundData?.timerInterval) {
+      clearInterval(updatedRoom.roundData.timerInterval);
+    }
+    rm.deleteRoom(code);
+    console.log(`[Room] ${code} deleted (empty)`);
+    return;
+  }
+
+  io.to(code).emit('player_left', {
+    playerId,
+    playerName,
+    roomState: buildRoomState(updatedRoom),
+  });
+  io.to(code).emit('room_updated', buildRoomState(updatedRoom));
+  io.to(code).emit('chat_message', {
+    id: Math.random().toString(36).substring(2, 9),
+    sender: 'System',
+    text: `${playerName} ${reason}`,
+    type: 'system',
+    timestamp: Date.now(),
+  });
+  console.log(`[Room] ${playerName} ${reason} ${code}`);
 }
