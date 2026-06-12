@@ -47,3 +47,6 @@ server/node_modules/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude code local settings
+.claude/

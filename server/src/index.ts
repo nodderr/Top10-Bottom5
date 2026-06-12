@@ -9,6 +9,15 @@ import http from 'http';
 import { Server } from 'socket.io';
 import { registerHandlers } from './socketHandler';
 import { startCleanup } from './roomManager';
+import { userFromCookieHeader, AuthedUser } from './authSession';
+
+// Extend Socket.IO's per-socket data with our authed user, so handlers can
+// read socket.data.authedUser without type assertions.
+declare module 'socket.io' {
+  interface SocketData {
+    authedUser?: AuthedUser;
+  }
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -41,12 +50,28 @@ app.get('/', (_req, res) => {
   res.json({ app: 'Top 10 Bottom 5 Game Server', version: '1.0.0' });
 });
 
+// ---- Auth middleware ----
+// Reads the session cookie from the WS handshake and attaches the authed user
+// (if any) to socket.data. Failure is non-fatal — guests are always welcome.
+io.use(async (socket, next) => {
+  try {
+    const user = await userFromCookieHeader(socket.handshake.headers.cookie);
+    if (user) socket.data.authedUser = user;
+  } catch (err) {
+    console.warn('[Auth] cookie validation failed:', err);
+  }
+  next();
+});
+
 // ---- Socket connection ----
 io.on('connection', (socket) => {
-  console.log(`[Socket] Connected: ${socket.id}`);
+  const who = socket.data.authedUser
+    ? `@${socket.data.authedUser.handle}`
+    : 'guest';
+  console.log(`[Socket] Connected: ${socket.id} (${who})`);
   registerHandlers(io, socket);
   socket.on('disconnect', () => {
-    console.log(`[Socket] Disconnected: ${socket.id}`);
+    console.log(`[Socket] Disconnected: ${socket.id} (${who})`);
   });
 });
 

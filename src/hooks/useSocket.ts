@@ -14,6 +14,9 @@ function getSocket(): Socket {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 10,
+      // Required for the browser to send our session cookie on the WS
+      // handshake when frontend and socket server are on different origins.
+      withCredentials: true,
     });
 
     socket.on('connect', () => {
