@@ -17,6 +17,37 @@ import {
 
 // Track which theme buckets each room has already used (for variety)
 const roomUsedThemes = new Map<string, string[]>();
+rm.onRoomDeleted((code) => roomUsedThemes.delete(code));
+
+// Per-socket guess rate limiting: token bucket, ~5 guesses/sec
+const GUESS_BUCKET_MAX = 8;
+const GUESS_REFILL_PER_SEC = 5;
+const guessBuckets = new Map<string, { tokens: number; lastRefill: number }>();
+
+function takeGuessToken(socketId: string): boolean {
+  const now = Date.now();
+  const b = guessBuckets.get(socketId) ?? { tokens: GUESS_BUCKET_MAX, lastRefill: now };
+  const elapsed = (now - b.lastRefill) / 1000;
+  b.tokens = Math.min(GUESS_BUCKET_MAX, b.tokens + elapsed * GUESS_REFILL_PER_SEC);
+  b.lastRefill = now;
+  if (b.tokens < 1) {
+    guessBuckets.set(socketId, b);
+    return false;
+  }
+  b.tokens -= 1;
+  guessBuckets.set(socketId, b);
+  return true;
+}
+
+// Per-socket create_room throttle: 1 per 10s
+const createRoomLastAt = new Map<string, number>();
+function canCreateRoom(socketId: string): boolean {
+  const last = createRoomLastAt.get(socketId) ?? 0;
+  const now = Date.now();
+  if (now - last < 10_000) return false;
+  createRoomLastAt.set(socketId, now);
+  return true;
+}
 
 function buildRoomState(room: Room) {
   return {
@@ -154,8 +185,20 @@ export function registerHandlers(io: Server, socket: Socket): void {
         return;
       }
 
+      if (!canCreateRoom(socket.id)) {
+        socket.emit('error', { message: 'Please wait a few seconds before creating another room.' });
+        return;
+      }
+
       const totalRounds = Math.min(Math.max(payload.totalRounds ?? 3, 1), 10);
-      const room = rm.createRoom(socket.id, name, totalRounds, payload.customPrompts);
+      // Trim + cap custom prompts to mitigate prompt-injection. Empty entries are kept
+      // (they trigger the random-AI fallback for that round, which is the documented behavior).
+      const sanitizedPrompts = Array.isArray(payload.customPrompts)
+        ? payload.customPrompts.slice(0, totalRounds).map((p) =>
+            typeof p === 'string' ? p.replace(/[\r\n]+/g, ' ').trim().slice(0, 120) : ''
+          )
+        : undefined;
+      const room = rm.createRoom(socket.id, name, totalRounds, sanitizedPrompts);
 
       socket.join(room.code);
       socket.emit('room_created', { roomCode: room.code });
@@ -241,13 +284,15 @@ export function registerHandlers(io: Server, socket: Socket): void {
   socket.on('submit_guess', (payload: SubmitGuessPayload) => {
     try {
       const code = (payload.roomCode ?? '').trim().toUpperCase();
-      const guess = (payload.guess ?? '').trim();
+      const guess = (payload.guess ?? '').trim().slice(0, 80);
       const room = rm.getRoom(code);
 
       if (!room) { socket.emit('guess_result', { success: false, message: 'Room not found.' }); return; }
       if (room.state !== 'playing') { socket.emit('guess_result', { success: false, message: 'Round is not active.' }); return; }
       if (!room.roundData) { socket.emit('guess_result', { success: false, message: 'No active round.' }); return; }
       if (!guess) { socket.emit('guess_result', { success: false, message: 'Please enter a guess.' }); return; }
+      if (rm.isRoundComplete(code)) { socket.emit('guess_result', { success: false, message: 'Round is over.' }); return; }
+      if (!takeGuessToken(socket.id)) { socket.emit('guess_result', { success: false, message: 'Slow down a bit!' }); return; }
 
       const alreadyFound = rm.getRevealedRanks(code);
       const matchedRank = findMatchingRank(guess, room.roundData.answers, alreadyFound);
@@ -282,7 +327,7 @@ export function registerHandlers(io: Server, socket: Socket): void {
       io.to(code).emit('chat_message', {
         id: Math.random().toString(36).substring(2, 9),
         sender: 'System',
-        text: `${playerName} found #${matchedRank}: "${answerText.toUpperCase()}" (+${points * 1000} pts)`,
+        text: `${playerName} found #${matchedRank}: "${answerText.toUpperCase()}" (+${points} pts)`,
         type: 'correct',
         timestamp: Date.now(),
       });
@@ -299,11 +344,14 @@ export function registerHandlers(io: Server, socket: Socket): void {
         players: updatedRoom.players,
       });
 
-      // Check if all answers found
+      // Check if all answers found — flip state immediately so late guesses are rejected,
+      // then schedule the round_end broadcast after a brief animation window.
       if (rm.isRoundComplete(code)) {
         if (updatedRoom.roundData?.timerInterval) {
           clearInterval(updatedRoom.roundData.timerInterval);
+          updatedRoom.roundData.timerInterval = undefined;
         }
+        updatedRoom.state = 'round_end';
         setTimeout(() => endRound(io, updatedRoom), 500);
       }
     } catch (err) {
@@ -352,6 +400,10 @@ export function registerHandlers(io: Server, socket: Socket): void {
 
   // ---- disconnect ----
   socket.on('disconnect', () => {
+    // Drop per-socket rate-limit state
+    guessBuckets.delete(socket.id);
+    createRoomLastAt.delete(socket.id);
+
     // Find all rooms this socket was in and remove them
     for (const [code, room] of rm.getAllRooms().entries()) {
       const wasInRoom = room.players.find((p) => p.id === socket.id);
@@ -366,6 +418,7 @@ export function registerHandlers(io: Server, socket: Socket): void {
           clearInterval(updatedRoom.roundData.timerInterval);
         }
         rm.deleteRoom(code);
+        roomUsedThemes.delete(code);
         console.log(`[Room] ${code} deleted (empty)`);
       } else {
         io.to(code).emit('player_left', {

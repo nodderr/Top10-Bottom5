@@ -113,7 +113,15 @@ function reducer(state: RoomStoreState, action: Action): RoomStoreState {
     case 'SET_CONNECTION':
       return { ...state, connectionStatus: action.status };
     case 'RESET':
-      return { ...initialState, myId: state.myId, connectionStatus: state.connectionStatus };
+      // Preserve room identity — server doesn't re-emit room_created on play_again,
+      // so clearing roomCode here would orphan the lobby UI. Only blow away round + end state.
+      return {
+        ...initialState,
+        myId: state.myId,
+        connectionStatus: state.connectionStatus,
+        roomCode: state.roomCode,
+        roomState: state.roomState,
+      };
     default:
       return state;
   }
@@ -147,7 +155,8 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Set my socket ID
+    // Track socket id on initial connect AND on every reconnect — socket.io assigns a
+    // fresh id after disconnect, so a once-only poll would leave isHost / (you) stale.
     const checkId = setInterval(() => {
       const id = getId();
       if (id) {
@@ -158,6 +167,14 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     }, 100);
 
     const cleanups = [
+      on<unknown>('connect', () => {
+        const id = getId();
+        if (id) dispatch({ type: 'SET_MY_ID', id });
+        dispatch({ type: 'SET_CONNECTION', status: 'connected' });
+      }),
+      on<unknown>('disconnect', () => {
+        dispatch({ type: 'SET_CONNECTION', status: 'disconnected' });
+      }),
       on<RoomState>('room_updated', (payload) => {
         dispatch({ type: 'ROOM_UPDATED', payload });
       }),

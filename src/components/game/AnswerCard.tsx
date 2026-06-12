@@ -21,8 +21,9 @@ export function AnswerCard({ rank, revealed, isNew = false }: AnswerCardProps) {
     if (revealed && !show) setShow(true);
   }, [revealed, isNew, show]);
 
-  const points = 11 - rank;
-  const scoreValue = points * 1000;
+  // Round-end progressive reveals come through with points=0 (placeholder rows from
+  // allAnswers). Fall back to the canonical rank-based value so the card still shows points.
+  const scoreValue = revealed?.points || (11 - rank) * 1000;
 
   return (
     <div

@@ -24,7 +24,7 @@ export function RoundEndScreen() {
   const { allAnswers = [], revealed = [], scores = {}, players = [], roundWinnerName, roundNumber, isLastRound } = roundEndState;
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="h-screen overflow-hidden bg-white flex flex-col">
       {/* Header */}
       <div className="border-b border-[var(--border)] bg-[#F8F9FA] px-6 py-4">
         <p className="text-xs font-bold text-[#1A73E8] uppercase tracking-widest font-sans mb-0.5">

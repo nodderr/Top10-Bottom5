@@ -1,9 +1,10 @@
 export const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL ?? 'http://localhost:3001';
 
+// Must match server/src/roomManager.ts pointsForRank — scaled ×1000 for game-feel.
 export const POINTS_BY_RANK: Record<number, number> = {
-  1: 10, 2: 9, 3: 8, 4: 7, 5: 6,
-  6: 5,  7: 4, 8: 3, 9: 2, 10: 1,
+  1: 10000, 2: 9000, 3: 8000, 4: 7000, 5: 6000,
+  6:  5000, 7: 4000, 8: 3000, 9: 2000, 10: 1000,
 };
 
 export const ROUND_TIMER_SECONDS = 90;

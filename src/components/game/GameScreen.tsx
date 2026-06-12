@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRoom } from '@/hooks/useRoom';
 import { AnswerBoard } from './AnswerBoard';
@@ -14,6 +14,26 @@ export function GameScreen() {
   const { roundState, roomState, myId, submitGuess, toasts, chatMessages } = useRoom();
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [lastRevealedRank, setLastRevealedRank] = useState<number | null>(null);
+  const prevRevealedCount = useRef(0);
+  const revealedLen = roundState?.revealed.length ?? 0;
+
+  // Trigger the "new card" animation whenever the reveal list grows. Watching
+  // length directly avoids the stale-closure bug where lastRevealedRank never updated.
+  useEffect(() => {
+    if (revealedLen > prevRevealedCount.current && roundState) {
+      const newest = roundState.revealed[revealedLen - 1];
+      if (newest) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setLastRevealedRank(newest.rank);
+        const t = setTimeout(() => setLastRevealedRank(null), 1000);
+        prevRevealedCount.current = revealedLen;
+        return () => clearTimeout(t);
+      }
+    }
+    prevRevealedCount.current = revealedLen;
+    // roundState intentionally omitted — react to length changes only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revealedLen]);
 
   if (!roundState || !roomState) return null;
 
@@ -21,28 +41,17 @@ export function GameScreen() {
   const isPlaying = roomState.state === 'playing';
   const foundCount = revealed.length;
 
-  const handleGuess = (guess: string) => {
-    const prevCount = revealed.length;
-    submitGuess(guess);
-    // Detect newly revealed answer on next render cycle
-    setTimeout(() => {
-      if (revealed.length > prevCount) {
-        setLastRevealedRank(revealed[revealed.length - 1]?.rank ?? null);
-        setTimeout(() => setLastRevealedRank(null), 1000);
-      }
-    }, 100);
-  };
+  const handleGuess = (guess: string) => submitGuess(guess);
 
-  // Get current player details for scaled stats
   const me = roomState.players.find((p) => p.id === myId);
-  const totalScore = me ? me.score * 1000 : 0;
-  const roundScore = me ? me.roundScore * 1000 : 0;
+  const totalScore = me?.score ?? 0;
+  const roundScore = me?.roundScore ?? 0;
 
   return (
     <>
       <ToastContainer toasts={toasts} />
 
-      <div className="min-h-screen bg-white flex flex-col">
+      <div className="h-screen overflow-hidden bg-white flex flex-col">
         {/* Header */}
         <div className="game-header flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-3">

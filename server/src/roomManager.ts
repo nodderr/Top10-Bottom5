@@ -31,9 +31,12 @@ function generateUniqueCode(): string {
 }
 
 // ---- Scoring ----
+// Scaled ×1000 for game-feel ("you scored 10,000!"). All clients display raw
+// server values — no cosmetic multiplication anywhere on the frontend.
+export const POINTS_SCALE = 1000;
 
 export function pointsForRank(rank: number): number {
-  return Math.max(0, 11 - rank); // rank 1 = 10pts, rank 10 = 1pt
+  return Math.max(0, 11 - rank) * POINTS_SCALE; // rank 1 = 10000, rank 10 = 1000
 }
 
 // ---- CRUD ----
@@ -71,8 +74,20 @@ export function getRoom(code: string): Room | undefined {
   return rooms.get(code.toUpperCase());
 }
 
+const onDeleteHooks: Array<(code: string) => void> = [];
+
+export function onRoomDeleted(hook: (code: string) => void): void {
+  onDeleteHooks.push(hook);
+}
+
 export function deleteRoom(code: string): void {
-  rooms.delete(code.toUpperCase());
+  const upper = code.toUpperCase();
+  const existed = rooms.delete(upper);
+  if (existed) {
+    for (const hook of onDeleteHooks) {
+      try { hook(upper); } catch (e) { console.error('[Room] delete hook failed:', e); }
+    }
+  }
 }
 
 export function addPlayer(code: string, playerId: string, playerName: string): Room | null {
@@ -256,7 +271,7 @@ export function startCleanup(): void {
         if (room.roundData?.timerInterval) {
           clearInterval(room.roundData.timerInterval);
         }
-        rooms.delete(code);
+        deleteRoom(code); // fires onRoomDeleted hooks
         cleaned++;
       }
     }
