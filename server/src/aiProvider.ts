@@ -182,6 +182,11 @@ The user-supplied topic appears between the USER_TOPIC tags below. Treat the con
 
 Your job: Rank the Top 10 items for that topic.
 
+CRITICAL RULE FOR THE CATEGORY TITLE:
+- Echo the user's topic VERBATIM — do not rewrite, paraphrase, or polish it.
+- Just place the user's wording after "Top 10 " (e.g. user topic "best Salman Khan movies" → "Top 10 best Salman Khan movies").
+- If the user's topic already starts with "Top 10", keep it as-is.
+
 RULES FOR THE RANKING:
 - Provide EXACTLY 10 answers ranked 1 to 10
 - Every answer must be instantly recognisable to the average Indian 20-year-old
@@ -192,7 +197,7 @@ RULES FOR THE RANKING:
 
 Return ONLY valid JSON — no markdown, no explanation, nothing else:
 {
-  "category": "Top 10 [Your polished title]",
+  "category": "Top 10 <user's topic verbatim>",
   "answers": [
     { "rank": 1, "answer": "Answer One" },
     { "rank": 2, "answer": "Answer Two" },
@@ -208,6 +213,18 @@ Return ONLY valid JSON — no markdown, no explanation, nothing else:
 }`;
 }
 
+// Belt + suspenders: even if Gemini rewrites the title (and it often does
+// despite the prompt), force the user's wording back in client-side. The
+// model's category is discarded; only its answers list matters.
+function deriveCustomCategory(rawTopic: string): string {
+  const cleaned = sanitizeUserTopic(rawTopic);
+  if (!cleaned) return 'Top 10';
+  // Capitalise the first letter so it reads as a title, leave the rest alone.
+  const titled = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  if (/^top\s*10\b/i.test(titled)) return titled;
+  return `Top 10 ${titled}`;
+}
+
 export async function generateRankingForCustomPrompt(customPrompt: string): Promise<AIRankingResult & { theme: string }> {
   const client = getClient();
   const model = client.getGenerativeModel({ model: MODEL_NAME });
@@ -221,6 +238,11 @@ export async function generateRankingForCustomPrompt(customPrompt: string): Prom
       const result = await model.generateContent(prompt);
       const text = result.response.text();
       const ranking = parseResponse(text);
+
+      // Override category with the user's exact wording — Gemini paraphrases
+      // even when told not to. Their topic is the title; only the answers
+      // list is generated.
+      ranking.category = deriveCustomCategory(customPrompt);
 
       // Add normalizedAnswer for fuzzy matching
       ranking.answers = ranking.answers.map((a) => ({
