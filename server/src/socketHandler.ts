@@ -133,14 +133,12 @@ async function endRound(io: Server, room: Room): Promise<void> {
   const roundScores: Record<string, number> = {};
   for (const p of room.players) roundScores[p.id] = p.roundScore ?? 0;
 
-  console.log('[DEBUG endRound] players:', room.players.map(p => ({ name: p.name, userId: p.userId, handle: p.handle, roundScore: p.roundScore })));
   let eloChanges: RoundEloDelta[] = [];
   try {
     eloChanges = await applyRoundElo(room, room.currentRound, roundScores);
   } catch (err) {
     console.error('[endRound] applyRoundElo threw:', err);
   }
-  console.log('[DEBUG endRound] eloChanges:', eloChanges);
 
   const payload = {
     category: room.roundData.category,
