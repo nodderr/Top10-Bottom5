@@ -7,11 +7,14 @@ import { useRoom } from '@/hooks/useRoom';
 import { MAX_NAME_LENGTH, DEFAULT_TOTAL_ROUNDS } from '@/lib/constants';
 
 const ROUND_CHOICES = [1, 2, 3, 5] as const;
+const TIMER_CHOICES = [30, 60, 90, 120] as const;
+const DEFAULT_TIMER_SECONDS = 90;
 
 // ---- Create Room Modal ----
 export function CreateRoomModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [name, setName] = useState('');
   const [rounds, setRounds] = useState<number>(DEFAULT_TOTAL_ROUNDS);
+  const [timerSeconds, setTimerSeconds] = useState<number>(DEFAULT_TIMER_SECONDS);
   const [isCustomMode, setIsCustomMode] = useState(false);
   // Sparse array — index = round number; entries beyond `rounds` are preserved
   // in case the user shrinks then re-expands. No effect needed.
@@ -39,7 +42,7 @@ export function CreateRoomModal({ isOpen, onClose }: { isOpen: boolean; onClose:
     setError('');
     justSubmitted.current = true;
     const promptsToSend = isCustomMode ? customPrompts.slice(0, rounds) : undefined;
-    createRoom(t, rounds, promptsToSend);
+    createRoom(t, rounds, timerSeconds, promptsToSend);
     setTimeout(() => setLoading(false), 6000);
   };
 
@@ -63,6 +66,13 @@ export function CreateRoomModal({ isOpen, onClose }: { isOpen: boolean; onClose:
         options={ROUND_CHOICES.map((r) => ({ value: r, label: String(r) }))}
         value={rounds}
         onChange={setRounds}
+      />
+
+      <Segmented
+        label="Timer per Round"
+        options={TIMER_CHOICES.map((s) => ({ value: s, label: `${s}s` }))}
+        value={timerSeconds}
+        onChange={setTimerSeconds}
       />
 
       <Segmented

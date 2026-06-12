@@ -10,8 +10,11 @@ const CIRC = 2 * Math.PI * R;
 
 export function Timer({ seconds, totalSeconds = 90 }: TimerProps) {
   const pct = Math.max(0, Math.min(1, seconds / totalSeconds));
-  const isUrgent = seconds <= 15;
-  const isWarning = seconds <= 30;
+  // Thresholds scale with total so a 30s round doesn't sit in "urgent" the whole time.
+  const urgentAt = Math.max(5, Math.round(totalSeconds * 0.17));   // ~17% remaining
+  const warningAt = Math.max(10, Math.round(totalSeconds * 0.33)); // ~33% remaining
+  const isUrgent = seconds <= urgentAt;
+  const isWarning = seconds <= warningAt;
   const color = isUrgent ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--success)';
 
   return (

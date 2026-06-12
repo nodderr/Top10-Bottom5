@@ -65,7 +65,7 @@ export function GameScreen() {
             <span className="text-[10px] font-display font-bold text-[var(--text-muted)] uppercase tracking-[0.18em] hidden sm:block">
               Round {roundNumber}
             </span>
-            <Timer seconds={timerSeconds} />
+            <Timer seconds={timerSeconds} totalSeconds={roomState.timerSeconds ?? 90} />
           </div>
         </header>
 

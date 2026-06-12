@@ -138,7 +138,7 @@ export function LobbyScreen() {
           {[
             { label: 'Rounds', value: roomState.totalRounds, color: 'var(--blue)' },
             { label: 'Answers', value: 10, color: 'var(--red)' },
-            { label: 'Timer', value: '90s', color: 'var(--green)' },
+            { label: 'Timer', value: `${roomState.timerSeconds ?? 90}s`, color: 'var(--green)' },
           ].map((stat) => (
             <div
               key={stat.label}

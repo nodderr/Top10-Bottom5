@@ -129,7 +129,7 @@ function reducer(state: RoomStoreState, action: Action): RoomStoreState {
 
 interface RoomContextType extends RoomStoreState {
   isHost: boolean;
-  createRoom: (playerName: string, totalRounds?: number, customPrompts?: string[]) => void;
+  createRoom: (playerName: string, totalRounds?: number, timerSeconds?: number, customPrompts?: string[]) => void;
   joinRoom: (roomCode: string, playerName: string) => void;
   startGame: () => void;
   submitGuess: (guess: string) => void;
@@ -229,8 +229,8 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     };
   }, [on, getId, addToast]);
 
-  const createRoom = useCallback((playerName: string, totalRounds?: number, customPrompts?: string[]) => {
-    emit('create_room', { playerName, totalRounds, customPrompts });
+  const createRoom = useCallback((playerName: string, totalRounds?: number, timerSeconds?: number, customPrompts?: string[]) => {
+    emit('create_room', { playerName, totalRounds, timerSeconds, customPrompts });
   }, [emit]);
 
   const joinRoom = useCallback((roomCode: string, playerName: string) => {

@@ -34,6 +34,7 @@ export interface RoomState {
   scores: Record<string, number>;
   totalRounds: number;
   currentRound: number;
+  timerSeconds: number;
   hostId: string;
 }
 

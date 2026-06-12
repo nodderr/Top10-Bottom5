@@ -46,6 +46,7 @@ export interface Room {
   state: GameState;
   totalRounds: number;
   currentRound: number;
+  timerSeconds: number;             // per-round guess timer (host-configurable)
   customPrompts?: string[];
   roundData?: RoundData;
   createdAt: number;
@@ -57,6 +58,7 @@ export interface Room {
 export interface CreateRoomPayload {
   playerName: string;
   totalRounds?: number;
+  timerSeconds?: number;
   customPrompts?: string[];
 }
 
@@ -86,6 +88,7 @@ export interface RoomStatePayload {
   players: Player[];
   totalRounds: number;
   currentRound: number;
+  timerSeconds: number;
   hostId: string;
 }
 

@@ -57,8 +57,18 @@ function buildRoomState(room: Room) {
     scores: room.scores,
     totalRounds: room.totalRounds,
     currentRound: room.currentRound,
+    timerSeconds: room.timerSeconds,
     hostId: room.hostId,
   };
+}
+
+// Host can pick a per-round timer — clamp defensively in case a non-frontend
+// client tries something silly. Range is generous around our presets.
+const TIMER_MIN_SECONDS = 15;
+const TIMER_MAX_SECONDS = 240;
+function clampTimer(seconds: number | undefined): number {
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds)) return 90;
+  return Math.min(Math.max(Math.round(seconds), TIMER_MIN_SECONDS), TIMER_MAX_SECONDS);
 }
 
 function startTimer(io: Server, room: Room): void {
@@ -161,7 +171,7 @@ async function startNewRound(io: Server, room: Room): Promise<void> {
       totalAnswers: 10,
       roundNumber,
       totalRounds: room.totalRounds,
-      timerSeconds: 90,
+      timerSeconds: room.timerSeconds,
     });
 
     io.to(roomCode).emit('room_updated', buildRoomState(updatedRoom));
@@ -191,6 +201,7 @@ export function registerHandlers(io: Server, socket: Socket): void {
       }
 
       const totalRounds = Math.min(Math.max(payload.totalRounds ?? 3, 1), 10);
+      const timerSeconds = clampTimer(payload.timerSeconds);
       // Trim + cap custom prompts to mitigate prompt-injection. Empty entries are kept
       // (they trigger the random-AI fallback for that round, which is the documented behavior).
       const sanitizedPrompts = Array.isArray(payload.customPrompts)
@@ -198,7 +209,7 @@ export function registerHandlers(io: Server, socket: Socket): void {
             typeof p === 'string' ? p.replace(/[\r\n]+/g, ' ').trim().slice(0, 120) : ''
           )
         : undefined;
-      const room = rm.createRoom(socket.id, name, totalRounds, sanitizedPrompts);
+      const room = rm.createRoom(socket.id, name, totalRounds, timerSeconds, sanitizedPrompts);
 
       socket.join(room.code);
       socket.emit('room_created', { roomCode: room.code });

@@ -41,7 +41,13 @@ export function pointsForRank(rank: number): number {
 
 // ---- CRUD ----
 
-export function createRoom(hostId: string, hostName: string, totalRounds = 3, customPrompts?: string[]): Room {
+export function createRoom(
+  hostId: string,
+  hostName: string,
+  totalRounds = 3,
+  timerSeconds = 90,
+  customPrompts?: string[]
+): Room {
   const code = generateUniqueCode();
   const host: Player = {
     id: hostId,
@@ -61,6 +67,7 @@ export function createRoom(hostId: string, hostName: string, totalRounds = 3, cu
     state: 'waiting',
     totalRounds,
     currentRound: 0,
+    timerSeconds,
     customPrompts,
     createdAt: Date.now(),
     lastActivityAt: Date.now(),
@@ -165,7 +172,7 @@ export function setRoundData(
     answers: rankedAnswers,
     revealed: [],
     startedAt: Date.now(),
-    timerSeconds: 90,
+    timerSeconds: room.timerSeconds,
   };
 
   room.currentRound = roundNumber;
