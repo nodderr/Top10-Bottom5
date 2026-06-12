@@ -32,7 +32,7 @@ function LeaderboardSplit({ entries, viewerHandle }: Props) {
           </div>
         )}
       </section>
-      <section className="w-full lg:w-[420px] xl:w-[460px] lg:shrink-0">
+      <section className="w-full lg:w-[420px] xl:w-[520px] 2xl:w-[600px] lg:shrink-0">
         <LeaderboardList
           entries={entries}
           viewerHandle={viewerHandle}

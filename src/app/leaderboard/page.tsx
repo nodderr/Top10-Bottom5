@@ -47,8 +47,8 @@ export default async function LeaderboardPage() {
   const [entries, viewer] = await Promise.all([loadEntries(), getCurrentUser()]);
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] bg-dotgrid px-4 py-10 md:py-12">
-      <div className="max-w-6xl mx-auto flex flex-col gap-6">
+    <main className="min-h-screen bg-[var(--bg)] bg-dotgrid px-6 md:px-10 lg:px-16 py-10 md:py-12">
+      <div className="flex flex-col gap-6">
         <header className="flex flex-col gap-3">
           <Link
             href="/"
