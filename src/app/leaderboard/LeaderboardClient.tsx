@@ -1,7 +1,6 @@
 'use client';
 
-import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useCallback, useState } from 'react';
 import { LeaderboardList, LeaderboardEntry } from './LeaderboardList';
 import { UserProfilePanel } from './UserProfilePanel';
 import { ProfileData } from '@/lib/profile-data';
@@ -12,13 +11,31 @@ interface Props {
   profilesByHandle: Record<string, ProfileData>;
 }
 
-function LeaderboardSplit({ entries, viewerHandle, profilesByHandle }: Props) {
-  const searchParams = useSearchParams();
-  const urlHandle = searchParams?.get('u') ?? null;
+// Read the initial selection from the URL on the very first render. After
+// that, selection lives in client state and we sync the URL via
+// history.replaceState — no router involvement, no server roundtrip.
+function readInitialHandle(): string | null {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get('u');
+}
 
-  // URL is the source of truth. Falls back to viewer, then the top entry.
-  const selectedHandle =
-    urlHandle ?? viewerHandle ?? entries[0]?.handle ?? null;
+export function LeaderboardClient({ entries, viewerHandle, profilesByHandle }: Props) {
+  const fallbackHandle = viewerHandle ?? entries[0]?.handle ?? null;
+  const [selectedHandle, setSelectedHandle] = useState<string | null>(
+    () => readInitialHandle() ?? fallbackHandle,
+  );
+
+  const select = useCallback((handle: string) => {
+    setSelectedHandle(handle);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('u', handle);
+      window.history.replaceState(null, '', url);
+      if (window.innerWidth < 1024) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  }, []);
 
   const profile = selectedHandle ? profilesByHandle[selectedHandle] : undefined;
 
@@ -41,22 +58,9 @@ function LeaderboardSplit({ entries, viewerHandle, profilesByHandle }: Props) {
           entries={entries}
           viewerHandle={viewerHandle}
           selectedHandle={selectedHandle}
+          onSelect={select}
         />
       </section>
     </div>
-  );
-}
-
-export function LeaderboardClient(props: Props) {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-        </div>
-      }
-    >
-      <LeaderboardSplit {...props} />
-    </Suspense>
   );
 }

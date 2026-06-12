@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 
 export interface LeaderboardEntry {
@@ -34,24 +33,13 @@ export function LeaderboardList({
   entries,
   viewerHandle,
   selectedHandle,
+  onSelect,
 }: {
   entries: LeaderboardEntry[];
   viewerHandle?: string | null;
   selectedHandle: string | null;
+  onSelect: (handle: string) => void;
 }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const select = (handle: string) => {
-    const params = new URLSearchParams(searchParams?.toString() ?? '');
-    params.set('u', handle);
-    router.replace(`/leaderboard?${params.toString()}`, { scroll: false });
-    // On smaller screens, jump to the top so the profile panel is visible.
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
   return (
     <ul className="flex flex-col gap-1.5">
       {entries.map((e) => {
@@ -62,7 +50,7 @@ export function LeaderboardList({
         return (
           <li key={e.handle}>
             <motion.button
-              onClick={() => select(e.handle)}
+              onClick={() => onSelect(e.handle)}
               whileHover={{ x: 2 }}
               transition={{ duration: 0.15 }}
               className={`w-full text-left bg-[var(--surface)] border ${
