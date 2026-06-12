@@ -10,7 +10,7 @@ import { Button } from '@/components/ui';
 import { Confetti } from '@/components/ui/Confetti';
 
 export function RoundEndScreen() {
-  const { roundEndState, roundState, roomState, myId, isHost, nextRound, leaveRoom } = useRoom();
+  const { roundEndState, roundState, roomState, myId, isHost, nextRound, leaveRoom, latestRoundElo } = useRoom();
   const router = useRouter();
   const [revealedCount, setRevealedCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -93,6 +93,36 @@ export function RoundEndScreen() {
             Standings
           </p>
           <Leaderboard players={players} scores={scores} myId={myId} />
+
+          {latestRoundElo.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-[var(--border)]">
+              <p className="text-[10px] font-display font-bold text-[var(--text-muted)] uppercase tracking-[0.22em] mb-2">
+                ELO this round
+              </p>
+              <ul className="flex flex-col gap-1">
+                {latestRoundElo.map((c) => (
+                  <li
+                    key={c.handle}
+                    className="flex items-center justify-between text-xs font-medium"
+                  >
+                    <span className="text-[var(--text)] truncate">@{c.handle}</span>
+                    <span
+                      className={`font-display font-extrabold tabular ${
+                        c.delta > 0
+                          ? 'text-[var(--success)]'
+                          : c.delta < 0
+                          ? 'text-[var(--danger)]'
+                          : 'text-[var(--text-muted)]'
+                      }`}
+                    >
+                      {c.delta > 0 ? '+' : ''}
+                      {c.delta} → {c.newElo}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </aside>
       </div>
 

@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import { Bricolage_Grotesque, Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { RoomProvider } from '@/context/RoomContext';
+import { AuthProvider } from '@/context/AuthContext';
+import { SiteHeader } from '@/components/header/SiteHeader';
+import { getCurrentUser } from '@/lib/auth/current-user';
 
 const bricolage = Bricolage_Grotesque({
   subsets: ['latin'],
@@ -34,11 +37,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // SSR the current user so there's no logged-in flash on first paint.
+  const initialUser = await getCurrentUser();
+
   return (
     <html lang="en" className={`${bricolage.variable} ${geist.variable} ${geistMono.variable}`}>
       <body className="antialiased font-body bg-[var(--bg)] text-[var(--text)]">
-        <RoomProvider>{children}</RoomProvider>
+        <AuthProvider initialUser={initialUser}>
+          <SiteHeader />
+          <RoomProvider>{children}</RoomProvider>
+        </AuthProvider>
       </body>
     </html>
   );

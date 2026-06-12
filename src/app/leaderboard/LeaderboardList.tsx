@@ -36,7 +36,13 @@ function shortDate(iso: string | null) {
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
-export function LeaderboardList({ entries }: { entries: LeaderboardEntry[] }) {
+export function LeaderboardList({
+  entries,
+  viewerHandle,
+}: {
+  entries: LeaderboardEntry[];
+  viewerHandle?: string | null;
+}) {
   const [openHandle, setOpenHandle] = useState<string | null>(null);
 
   return (
@@ -44,6 +50,7 @@ export function LeaderboardList({ entries }: { entries: LeaderboardEntry[] }) {
       {entries.map((e) => {
         const isOpen = openHandle === e.handle;
         const isPodium = e.rank <= 3;
+        const isViewer = viewerHandle === e.handle;
         const color = colorFor(e.handle);
         return (
           <li key={e.handle}>
@@ -51,7 +58,11 @@ export function LeaderboardList({ entries }: { entries: LeaderboardEntry[] }) {
               layout
               onClick={() => setOpenHandle(isOpen ? null : e.handle)}
               className={`w-full text-left bg-[var(--surface)] border ${
-                isPodium ? 'border-[var(--border-strong)]' : 'border-[var(--border)]'
+                isViewer
+                  ? 'border-[var(--primary)] ring-1 ring-[var(--primary)]/30'
+                  : isPodium
+                  ? 'border-[var(--border-strong)]'
+                  : 'border-[var(--border)]'
               } ${isOpen ? 'shadow-[var(--shadow)]' : 'hover:shadow-[var(--shadow-sm)]'}
               transition-shadow cursor-pointer block focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--primary)]`}
               aria-expanded={isOpen}
@@ -76,8 +87,13 @@ export function LeaderboardList({ entries }: { entries: LeaderboardEntry[] }) {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-display font-extrabold text-base md:text-lg text-[var(--text)] truncate leading-tight">
-                    {e.displayName}
+                  <p className="font-display font-extrabold text-base md:text-lg text-[var(--text)] truncate leading-tight flex items-center gap-2">
+                    <span className="truncate">{e.displayName}</span>
+                    {isViewer && (
+                      <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 text-[10px] font-display font-extrabold uppercase tracking-[0.18em] bg-[var(--primary)] text-[var(--primary-text)]">
+                        You
+                      </span>
+                    )}
                   </p>
                   <p className="text-xs font-medium text-[var(--text-muted)] truncate">
                     @{e.handle}

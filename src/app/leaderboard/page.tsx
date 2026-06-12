@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { pool } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth/current-user';
 import { LeaderboardList, LeaderboardEntry } from './LeaderboardList';
 
 export const dynamic = 'force-dynamic';
@@ -42,7 +43,7 @@ async function loadEntries(): Promise<LeaderboardEntry[]> {
 }
 
 export default async function LeaderboardPage() {
-  const entries = await loadEntries();
+  const [entries, viewer] = await Promise.all([loadEntries(), getCurrentUser()]);
 
   return (
     <main className="min-h-screen bg-[var(--bg)] bg-dotgrid px-4 py-10 md:py-16">
@@ -86,7 +87,7 @@ export default async function LeaderboardPage() {
             </p>
           </div>
         ) : (
-          <LeaderboardList entries={entries} />
+          <LeaderboardList entries={entries} viewerHandle={viewer?.handle ?? null} />
         )}
       </div>
     </main>

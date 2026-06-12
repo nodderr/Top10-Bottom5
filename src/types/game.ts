@@ -13,6 +13,16 @@ export interface Player {
   isReady: boolean;
   disconnected?: boolean;
   joinedAt: number;
+  userId?: string;
+  handle?: string;
+}
+
+export interface RoundEloDelta {
+  userId: string;
+  handle: string;
+  oldElo: number;
+  newElo: number;
+  delta: number;
 }
 
 export interface RevealedAnswer {
@@ -67,6 +77,7 @@ export interface RoundEndState {
   roundNumber: number;
   totalRounds?: number;
   isLastRound: boolean;
+  eloChanges?: RoundEloDelta[];
 }
 
 export interface GuessResult {

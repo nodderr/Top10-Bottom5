@@ -8,7 +8,7 @@ import { Button } from '@/components/ui';
 import { Confetti } from '@/components/ui/Confetti';
 
 export function GameEndScreen() {
-  const { gameEndState, roomState, myId, isHost, playAgain, leaveRoom } = useRoom();
+  const { gameEndState, roomState, myId, isHost, playAgain, leaveRoom, gameEloTotals } = useRoom();
   const router = useRouter();
 
   if (!gameEndState || !roomState) return null;
@@ -65,6 +65,43 @@ export function GameEndScreen() {
           </p>
           <Leaderboard players={players} scores={scores} myId={myId} />
         </div>
+
+        {Object.keys(gameEloTotals).length > 0 && (
+          <>
+            <div className="h-px bg-[var(--border)]" />
+            <div>
+              <p className="text-[11px] font-display font-bold text-[var(--text-muted)] uppercase tracking-[0.22em] mb-3">
+                ELO This Game
+              </p>
+              <ul className="flex flex-col gap-1.5">
+                {Object.entries(gameEloTotals)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([handle, total]) => (
+                    <li
+                      key={handle}
+                      className="flex items-center justify-between text-sm font-medium border-b border-[var(--border)] last:border-0 py-2"
+                    >
+                      <span className="text-[var(--text)] font-display font-bold truncate">
+                        @{handle}
+                      </span>
+                      <span
+                        className={`font-display font-extrabold tabular ${
+                          total > 0
+                            ? 'text-[var(--success)]'
+                            : total < 0
+                            ? 'text-[var(--danger)]'
+                            : 'text-[var(--text-muted)]'
+                        }`}
+                      >
+                        {total > 0 ? '+' : ''}
+                        {total} ELO
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          </>
+        )}
 
         <div className="h-px bg-[var(--border)]" />
 

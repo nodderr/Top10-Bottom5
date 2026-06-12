@@ -6,7 +6,9 @@ import { readSession, writeSession, clearSession } from '@/lib/session';
 import {
   GameState, Player, RoomState, RoundState,
   RevealedAnswer, GameEndState, RoundEndState, GuessResult, ToastMessage, ChatMessage,
+  RoundEloDelta,
 } from '@/types/game';
+import { useAuth } from '@/context/AuthContext';
 
 interface RoomStoreState {
   myId: string | null;
@@ -19,6 +21,10 @@ interface RoomStoreState {
   toasts: ToastMessage[];
   chatMessages: ChatMessage[];
   connectionStatus: 'connecting' | 'connected' | 'disconnected';
+  // Per-handle cumulative ELO delta across the current game. Resets on
+  // create_room / RESET_ALL. Updated each round_end from RoundEndState.eloChanges.
+  gameEloTotals: Record<string, number>;
+  latestRoundElo: RoundEloDelta[];
 }
 
 type Action =
@@ -49,6 +55,8 @@ const initialState: RoomStoreState = {
   toasts: [],
   chatMessages: [],
   connectionStatus: 'connecting',
+  gameEloTotals: {},
+  latestRoundElo: [],
 };
 
 function reducer(state: RoomStoreState, action: Action): RoomStoreState {
@@ -95,7 +103,14 @@ function reducer(state: RoomStoreState, action: Action): RoomStoreState {
           ? { ...state.roundState, timerSeconds: action.seconds }
           : state.roundState,
       };
-    case 'ROUND_END':
+    case 'ROUND_END': {
+      // Fold ELO deltas into a running per-handle total for the current game,
+      // so GameEndScreen can show cumulative change without recomputing.
+      const eloChanges = action.payload.eloChanges ?? [];
+      const nextTotals = { ...state.gameEloTotals };
+      for (const c of eloChanges) {
+        nextTotals[c.handle] = (nextTotals[c.handle] ?? 0) + c.delta;
+      }
       return {
         ...state,
         gameState: action.payload.isLastRound ? 'game_end' : 'round_end',
@@ -103,7 +118,10 @@ function reducer(state: RoomStoreState, action: Action): RoomStoreState {
         roundState: state.roundState
           ? { ...state.roundState, allAnswers: action.payload.allAnswers }
           : state.roundState,
+        latestRoundElo: eloChanges,
+        gameEloTotals: nextTotals,
       };
+    }
     case 'GAME_END':
       return { ...state, gameState: 'game_end', gameEndState: action.payload };
     case 'ADD_TOAST':
@@ -156,12 +174,19 @@ let toastCounter = 0;
 export function RoomProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { emit, on, getId } = useSocket();
+  const { user } = useAuth();
   // Live ref to the playerToken from the most-recent successful create/join/rejoin.
   // Used to attempt rejoin on every socket reconnect (which assigns a new socket.id).
   const playerTokenRef = useRef<string | null>(null);
   // Pending name from create/join — captured at submit, recorded into the session
   // once the server confirms with a playerToken.
   const pendingNameRef = useRef<string>('');
+  // Live ref to the authed user so the round_end handler (subscribed once)
+  // can read the current handle without re-subscribing on each auth change.
+  const userHandleRef = useRef<string | null>(null);
+  useEffect(() => {
+    userHandleRef.current = user?.handle ?? null;
+  }, [user]);
 
   const addToast = useCallback((type: ToastMessage['type'], message: string, points?: number) => {
     const id = String(++toastCounter);
@@ -244,6 +269,18 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       }),
       on<RoundEndState>('round_end', (payload) => {
         dispatch({ type: 'ROUND_END', payload });
+        // ELO toast for the authed viewer, if their handle is in the deltas.
+        const myHandle = userHandleRef.current;
+        if (myHandle) {
+          const mine = payload.eloChanges?.find((c) => c.handle === myHandle);
+          if (mine && mine.delta !== 0) {
+            const sign = mine.delta > 0 ? '+' : '';
+            addToast(
+              mine.delta > 0 ? 'success' : 'error',
+              `ELO ${sign}${mine.delta} → ${mine.newElo}`,
+            );
+          }
+        }
       }),
       on<GameEndState>('game_end', (payload) => {
         dispatch({ type: 'GAME_END', payload });

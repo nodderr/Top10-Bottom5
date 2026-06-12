@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Modal, Button, Input } from '@/components/ui';
 import { useRoom } from '@/hooks/useRoom';
+import { useAuth } from '@/context/AuthContext';
 import { MAX_NAME_LENGTH, DEFAULT_TOTAL_ROUNDS } from '@/lib/constants';
 
 const ROUND_CHOICES = [1, 2, 3, 5] as const;
@@ -12,7 +13,14 @@ const DEFAULT_TIMER_SECONDS = 90;
 
 // ---- Create Room Modal ----
 export function CreateRoomModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const [name, setName] = useState('');
+  const { user } = useAuth();
+  const [name, setName] = useState(user?.displayName ?? '');
+  useEffect(() => {
+    if (user?.displayName && !name) setName(user.displayName);
+    // Intentionally not depending on `name` — only seed when the modal opens
+    // or the user changes. Manual edits must not be overwritten.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
   const [rounds, setRounds] = useState<number>(DEFAULT_TOTAL_ROUNDS);
   const [timerSeconds, setTimerSeconds] = useState<number>(DEFAULT_TIMER_SECONDS);
   const [isCustomMode, setIsCustomMode] = useState(false);
@@ -129,12 +137,17 @@ export function JoinRoomModal({
   onClose: () => void;
   prefillCode?: string;
 }) {
-  const [name, setName] = useState('');
+  const { user } = useAuth();
+  const [name, setName] = useState(user?.displayName ?? '');
   const [code, setCode] = useState(prefillCode.toUpperCase());
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; code?: string }>({});
   const router = useRouter();
   const { joinRoom, roomCode, roomState } = useRoom();
+  useEffect(() => {
+    if (user?.displayName && !name) setName(user.displayName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
   const justSubmitted = useRef(false);
 
   useEffect(() => {
