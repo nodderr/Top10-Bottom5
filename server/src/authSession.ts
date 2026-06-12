@@ -55,6 +55,51 @@ export interface AuthedUser {
   displayName: string;
 }
 
+/**
+ * Validate a short-lived ticket minted by the Next.js side. Used as the primary
+ * handshake auth in prod where the session cookie cannot cross the Vercel↔Render
+ * boundary. Synchronous + DB-free — the HMAC + expiry are the entire check.
+ */
+export function userFromTicket(ticket: string | undefined): AuthedUser | null {
+  if (!ticket || typeof ticket !== 'string') return null;
+  const idx = ticket.lastIndexOf('.');
+  if (idx <= 0) return null;
+  const payload = ticket.slice(0, idx);
+  const sig = ticket.slice(idx + 1);
+
+  const expected = hmac(payload);
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return null;
+  if (!timingSafeEqual(a, b)) return null;
+
+  try {
+    const decoded = Buffer.from(payload, 'base64url').toString('utf-8');
+    const body = JSON.parse(decoded) as {
+      userId?: unknown;
+      handle?: unknown;
+      displayName?: unknown;
+      exp?: unknown;
+    };
+    if (
+      typeof body.userId !== 'string' ||
+      typeof body.handle !== 'string' ||
+      typeof body.displayName !== 'string' ||
+      typeof body.exp !== 'number' ||
+      Date.now() > body.exp
+    ) {
+      return null;
+    }
+    return {
+      userId: body.userId,
+      handle: body.handle,
+      displayName: body.displayName,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function userFromCookieHeader(
   cookieHeader: string | undefined,
 ): Promise<AuthedUser | null> {

@@ -8,6 +8,7 @@ import {
   logoutRequest,
   registerRequest,
 } from '@/lib/auth/client';
+import { reconnectSocket } from '@/hooks/useSocket';
 
 interface AuthState {
   user: AuthUser | null;
@@ -58,6 +59,8 @@ export function AuthProvider({
   const login = useCallback(async (email: string, password: string) => {
     const user = await loginRequest(email, password);
     setState({ user, loading: false });
+    // Reconnect so the socket handshake picks up a fresh ticket for the new identity.
+    reconnectSocket();
     return user;
   }, []);
 
@@ -65,6 +68,7 @@ export function AuthProvider({
     async (input: { email: string; password: string; handle: string; displayName: string }) => {
       const user = await registerRequest(input);
       setState({ user, loading: false });
+      reconnectSocket();
       return user;
     },
     [],
@@ -73,6 +77,7 @@ export function AuthProvider({
   const logout = useCallback(async () => {
     await logoutRequest();
     setState({ user: null, loading: false });
+    reconnectSocket();
   }, []);
 
   return (
