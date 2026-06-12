@@ -25,7 +25,7 @@ function LandingPageContent() {
   }, [roomCode, roomState?.state, router]);
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] bg-dotgrid flex flex-col items-center justify-center px-4 relative overflow-hidden">
+    <main className="min-h-screen bg-[var(--bg)] bg-dotgrid flex flex-col items-center justify-center px-6 md:px-12 relative overflow-hidden">
       {/* Decorative corner dots */}
       <span className="hidden md:block absolute top-12 left-12 w-2 h-2 bg-[var(--blue)]" />
       <span className="hidden md:block absolute top-12 right-12 w-2 h-2 bg-[var(--red)]" />

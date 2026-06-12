@@ -5,7 +5,7 @@ export const metadata = { title: 'Sign in — Top 10 Bottom 5' };
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen bg-[var(--bg)] bg-dotgrid flex flex-col items-center justify-center px-4 py-10 relative overflow-hidden">
+    <main className="min-h-screen bg-[var(--bg)] bg-dotgrid flex flex-col items-center justify-center px-6 md:px-12 py-10 relative overflow-hidden">
       <span className="hidden md:block absolute top-12 left-12 w-2 h-2 bg-[var(--blue)]" />
       <span className="hidden md:block absolute top-12 right-12 w-2 h-2 bg-[var(--red)]" />
       <span className="hidden md:block absolute bottom-12 left-12 w-2 h-2 bg-[var(--yellow)]" />

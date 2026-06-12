@@ -3,11 +3,13 @@ import { pool } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/current-user';
 import { LeaderboardEntry } from './LeaderboardList';
 import { LeaderboardClient } from './LeaderboardClient';
+import { loadProfilesByHandle, ProfileData } from '@/lib/profile-data';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Leaderboard — Top 10 Bottom 5' };
 
 interface Row {
+  id: string;
   handle: string;
   display_name: string;
   rating: number;
@@ -18,10 +20,13 @@ interface Row {
   created_at: Date;
 }
 
-async function loadEntries(): Promise<LeaderboardEntry[]> {
+async function loadEntriesAndIds(): Promise<{
+  entries: LeaderboardEntry[];
+  userIds: string[];
+}> {
   const { rows } = await pool.query<Row>(
     `select
-       u.handle, u.display_name,
+       u.id, u.handle, u.display_name,
        er.rating, er.peak_rating,
        er.games_played, er.rounds_played,
        er.last_played, u.created_at
@@ -30,24 +35,36 @@ async function loadEntries(): Promise<LeaderboardEntry[]> {
      order by er.rating desc, er.peak_rating desc, u.created_at asc
      limit 100`,
   );
-  return rows.map((r, i) => ({
-    rank: i + 1,
-    handle: r.handle,
-    displayName: r.display_name,
-    rating: r.rating,
-    peakRating: r.peak_rating,
-    gamesPlayed: r.games_played,
-    roundsPlayed: r.rounds_played,
-    lastPlayed: r.last_played?.toISOString() ?? null,
-    memberSince: r.created_at.toISOString(),
-  }));
+  return {
+    entries: rows.map((r, i) => ({
+      rank: i + 1,
+      handle: r.handle,
+      displayName: r.display_name,
+      rating: r.rating,
+      peakRating: r.peak_rating,
+      gamesPlayed: r.games_played,
+      roundsPlayed: r.rounds_played,
+      lastPlayed: r.last_played?.toISOString() ?? null,
+      memberSince: r.created_at.toISOString(),
+    })),
+    userIds: rows.map((r) => r.id),
+  };
 }
 
 export default async function LeaderboardPage() {
-  const [entries, viewer] = await Promise.all([loadEntries(), getCurrentUser()]);
+  const [{ entries, userIds }, viewer] = await Promise.all([
+    loadEntriesAndIds(),
+    getCurrentUser(),
+  ]);
+
+  // Prefetch every leaderboard user's profile in a single batched query bundle
+  // (3 SQL queries total, not 100). Clicking a row is then instant.
+  const profilesMap = await loadProfilesByHandle(userIds);
+  const profilesByHandle: Record<string, ProfileData> = {};
+  for (const [handle, p] of profilesMap) profilesByHandle[handle] = p;
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] bg-dotgrid px-6 md:px-10 lg:px-16 py-10 md:py-12">
+    <main className="min-h-screen bg-[var(--bg)] bg-dotgrid px-6 md:px-12 lg:px-24 xl:px-32 2xl:px-40 py-10 md:py-12">
       <div className="flex flex-col gap-6">
         <header className="flex flex-col gap-3">
           <Link
@@ -88,7 +105,11 @@ export default async function LeaderboardPage() {
             </p>
           </div>
         ) : (
-          <LeaderboardClient entries={entries} viewerHandle={viewer?.handle ?? null} />
+          <LeaderboardClient
+            entries={entries}
+            viewerHandle={viewer?.handle ?? null}
+            profilesByHandle={profilesByHandle}
+          />
         )}
       </div>
     </main>

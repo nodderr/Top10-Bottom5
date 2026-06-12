@@ -1,40 +1,20 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { RatingChart, TimelinePoint } from './RatingChart';
-
-interface RecentGame {
-  gameId: string;
-  roomCode: string;
-  endedAt: string | null;
-  startedAt: string;
-  totalRounds: number;
-  finalRank: number;
-  scoreSum: number;
-  totalDelta: number;
-}
-
-interface ProfileData {
-  handle: string;
-  displayName: string;
-  memberSince: string;
-  rank: number | null;
-  totalRanked: number;
-  rating: number | null;
-  peakRating: number | null;
-  gamesPlayed: number;
-  roundsPlayed: number;
-  lastPlayed: string | null;
-  ratingDelta7d: number | null;
-  winRate: number;
-  bestRoundScore: number | null;
-  avgDeltaPerRound: number | null;
-  range: '7d' | '30d' | 'all';
-  timeline: TimelinePoint[];
-  recentGames: RecentGame[];
-}
+import { RatingChart } from './RatingChart';
+import type { ProfileData } from '@/lib/profile-data';
 
 type Range = '7d' | '30d' | 'all';
+
+function filterTimelineByRange(
+  timeline: ProfileData['timeline'],
+  range: Range,
+): ProfileData['timeline'] {
+  if (range === 'all') return timeline;
+  const ms = range === '7d' ? 7 * 24 * 3600 * 1000 : 30 * 24 * 3600 * 1000;
+  const cutoff = Date.now() - ms;
+  return timeline.filter((p) => new Date(p.ts).getTime() >= cutoff);
+}
 
 const PALETTE = ['#1A73E8', '#EA4335', '#FBBC05', '#34A853'];
 function colorFor(seed: string) {
@@ -74,21 +54,35 @@ function relativeDate(iso: string | null): string {
 
 interface Props {
   handle: string;
+  /**
+   * Profile bundled with the leaderboard SSR payload. If present, the panel
+   * renders instantly with no roundtrip — clicking between leaderboard rows
+   * is effectively free. For URL handles outside the prefetched set, falls
+   * back to the per-user /api/u endpoint.
+   */
+  cachedProfile?: ProfileData;
 }
 
-type FetchState =
-  | { status: 'loading'; key: string }
-  | { status: 'ok'; key: string; data: ProfileData }
-  | { status: 'error'; key: string; error: string };
+type FetchedState =
+  | { key: string; data: ProfileData }
+  | { key: string; error: string };
 
-export function UserProfilePanel({ handle }: Props) {
+type DisplayState =
+  | { status: 'loading' }
+  | { status: 'ok'; data: ProfileData }
+  | { status: 'error'; error: string };
+
+export function UserProfilePanel({ handle, cachedProfile }: Props) {
   const [range, setRange] = useState<Range>('all');
-  const key = `${handle}|${range}`;
-  const [state, setState] = useState<FetchState>({ status: 'loading', key });
+  // Only used for the fallback fetch path (handles not in the prefetched map).
+  const [fetched, setFetched] = useState<FetchedState | null>(null);
 
   useEffect(() => {
+    // Cached path: render directly from the prop, no network needed.
+    if (cachedProfile?.handle === handle) return;
+
     let cancelled = false;
-    fetch(`/api/u/${encodeURIComponent(handle)}?range=${range}`, { cache: 'no-store' })
+    fetch(`/api/u/${encodeURIComponent(handle)}`, { cache: 'no-store' })
       .then(async (r) => {
         if (!r.ok) {
           throw new Error(r.status === 404 ? 'User not found' : 'Failed to load');
@@ -96,21 +90,31 @@ export function UserProfilePanel({ handle }: Props) {
         return (await r.json()) as ProfileData;
       })
       .then((d) => {
-        if (!cancelled) setState({ status: 'ok', key, data: d });
+        if (!cancelled) setFetched({ key: handle, data: d });
       })
       .catch((e: Error) => {
-        if (!cancelled) setState({ status: 'error', key, error: e.message });
+        if (!cancelled) setFetched({ key: handle, error: e.message });
       });
     return () => {
       cancelled = true;
     };
-  }, [handle, range, key]);
+  }, [handle, cachedProfile]);
+
+  const state: DisplayState = useMemo(() => {
+    if (cachedProfile?.handle === handle) {
+      return { status: 'ok', data: cachedProfile };
+    }
+    if (fetched?.key === handle) {
+      return 'data' in fetched
+        ? { status: 'ok', data: fetched.data }
+        : { status: 'error', error: fetched.error };
+    }
+    return { status: 'loading' };
+  }, [handle, cachedProfile, fetched]);
 
   const avatarColor = useMemo(() => colorFor(handle), [handle]);
 
-  // Treat "previous-key" state as loading so the panel doesn't briefly show
-  // stale data while a new fetch is in flight.
-  if (state.key !== key || state.status === 'loading') {
+  if (state.status === 'loading') {
     return (
       <div className="border border-[var(--border)] bg-[var(--surface)] h-[600px] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
@@ -128,6 +132,7 @@ export function UserProfilePanel({ handle }: Props) {
   }
 
   const data = state.data;
+  const visibleTimeline = filterTimelineByRange(data.timeline, range);
 
   return (
     <div className="flex flex-col gap-5">
@@ -192,7 +197,7 @@ export function UserProfilePanel({ handle }: Props) {
             ))}
           </div>
         </div>
-        <RatingChart points={data.timeline} />
+        <RatingChart points={visibleTimeline} />
       </div>
 
       {/* STAT GRID */}
