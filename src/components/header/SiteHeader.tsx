@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { MyRating } from './MyRating';
 
 // Hidden inside an active game so the header doesn't compete with the round HUD.
 const HIDE_PATTERNS = [/^\/room\//];
@@ -46,6 +47,7 @@ export function SiteHeader() {
         </Link>
 
         <nav className="flex items-center gap-1 md:gap-2">
+          <MyRating />
           <Link
             href="/leaderboard"
             className={`px-2.5 py-1.5 text-[11px] md:text-xs font-display font-bold uppercase tracking-[0.2em] transition-colors ${
