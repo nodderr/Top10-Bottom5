@@ -268,6 +268,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'TIMER_UPDATE', seconds: secondsRemaining });
       }),
       on<RoundEndState>('round_end', (payload) => {
+        console.log('[DEBUG round_end] eloChanges:', payload.eloChanges, 'players:', payload.players);
         dispatch({ type: 'ROUND_END', payload });
         // ELO toast for the authed viewer, if their handle is in the deltas.
         const myHandle = userHandleRef.current;
