@@ -1,10 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useReducer, useEffect, useCallback } from 'react';
 import { useSocket } from '@/hooks/useSocket';
 import {
   GameState, Player, RoomState, RoundState,
-  RevealedAnswer, RankedAnswer, GameEndState, RoundEndState, GuessResult, ToastMessage, ChatMessage,
+  RevealedAnswer, GameEndState, RoundEndState, GuessResult, ToastMessage, ChatMessage,
 } from '@/types/game';
 
 interface RoomStoreState {
@@ -145,7 +145,6 @@ let toastCounter = 0;
 export function RoomProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { emit, on, getId } = useSocket();
-  const initialized = useRef(false);
 
   const addToast = useCallback((type: ToastMessage['type'], message: string, points?: number) => {
     const id = String(++toastCounter);

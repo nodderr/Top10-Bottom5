@@ -17,27 +17,25 @@ export function GameScreen() {
   const prevRevealedCount = useRef(0);
   const revealedLen = roundState?.revealed.length ?? 0;
 
-  // Trigger the "new card" animation whenever the reveal list grows. Watching
-  // length directly avoids the stale-closure bug where lastRevealedRank never updated.
   useEffect(() => {
     if (revealedLen > prevRevealedCount.current && roundState) {
       const newest = roundState.revealed[revealedLen - 1];
       if (newest) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setLastRevealedRank(newest.rank);
-        const t = setTimeout(() => setLastRevealedRank(null), 1000);
+        const t = setTimeout(() => setLastRevealedRank(null), 1100);
         prevRevealedCount.current = revealedLen;
         return () => clearTimeout(t);
       }
     }
     prevRevealedCount.current = revealedLen;
-    // roundState intentionally omitted — react to length changes only.
+    // roundState intentionally omitted — react to length only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revealedLen]);
 
   if (!roundState || !roomState) return null;
 
-  const { category, roundNumber, totalRounds, timerSeconds, revealed } = roundState;
+  const { category, roundNumber, timerSeconds, revealed } = roundState;
   const isPlaying = roomState.state === 'playing';
   const foundCount = revealed.length;
 
@@ -51,132 +49,115 @@ export function GameScreen() {
     <>
       <ToastContainer toasts={toasts} />
 
-      <div className="h-screen overflow-hidden bg-white flex flex-col">
+      <div className="h-screen overflow-hidden bg-[var(--bg)] flex flex-col">
         {/* Header */}
-        <div className="game-header flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-[#1A73E8] uppercase tracking-widest font-sans">
-              CATEGORY
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-5 md:px-8 py-3.5">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-[11px] font-display font-extrabold text-[var(--blue)] uppercase tracking-[0.22em] shrink-0">
+              Category
             </span>
-            <div className="w-px h-4 bg-[var(--border)] hidden md:block" />
-            <h2 className="font-sans font-bold text-lg md:text-xl text-[#202124] leading-snug">
+            <span className="hidden md:block w-px h-4 bg-[var(--border)]" />
+            <h2 className="font-display font-bold text-base md:text-lg text-[var(--text)] leading-snug truncate">
               {category}
             </h2>
           </div>
-          <div className="flex items-center gap-4 flex-shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-[10px] font-display font-bold text-[var(--text-muted)] uppercase tracking-[0.18em] hidden sm:block">
+              Round {roundNumber}
+            </span>
             <Timer seconds={timerSeconds} />
           </div>
-        </div>
+        </header>
 
         {/* Body */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Answer board wrapper */}
-          <main className="game-main flex flex-col items-center">
+          <main className="flex-1 overflow-y-auto px-5 md:px-8 py-6 md:py-8 flex flex-col items-center">
             <div className="w-full max-w-4xl flex flex-col gap-6">
-              
-              {/* 2-Column Answer Board */}
-              <AnswerBoard
-                revealed={revealed}
-                newlyRevealedRank={lastRevealedRank}
-              />
+              <AnswerBoard revealed={revealed} newlyRevealedRank={lastRevealedRank} />
 
-              {/* Google Feud Style Bottom Stats */}
-              <div className="grid grid-cols-4 gap-4 text-center mt-6 py-4 border-t border-b border-[var(--border)]">
-                <div className="flex flex-col">
-                  <span className="text-[11px] md:text-xs font-bold text-[#4285F4] tracking-wider uppercase font-sans">
-                    ROUND
-                  </span>
-                  <span className="text-2xl md:text-3xl font-extrabold text-[#4285F4] mt-1 font-sans">
-                    {roundNumber}
-                  </span>
-                </div>
-                <div className="flex flex-col border-l border-[var(--border)]">
-                  <span className="text-[11px] md:text-xs font-bold text-[#EA4335] tracking-wider uppercase font-sans">
-                    FOUND
-                  </span>
-                  <span className="text-2xl md:text-3xl font-extrabold text-[#EA4335] mt-1 font-sans">
-                    {foundCount}/10
-                  </span>
-                </div>
-                <div className="flex flex-col border-l border-[var(--border)]">
-                  <span className="text-[11px] md:text-xs font-bold text-[#FBBC05] tracking-wider uppercase font-sans">
-                    TOTAL SCORE
-                  </span>
-                  <span className="text-2xl md:text-3xl font-extrabold text-[#FBBC05] mt-1 font-sans">
-                    {totalScore.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex flex-col border-l border-[var(--border)]">
-                  <span className="text-[11px] md:text-xs font-bold text-[#34A853] tracking-wider uppercase font-sans">
-                    THIS ROUND
-                  </span>
-                  <span className="text-2xl md:text-3xl font-extrabold text-[#34A853] mt-1 font-sans">
-                    {roundScore.toLocaleString()}
-                  </span>
-                </div>
+              {/* Stats strip — four colored stats, kept clean */}
+              <div className="grid grid-cols-4 gap-2 md:gap-4 text-center mt-2 py-4 border-t border-b border-[var(--border)]">
+                <Stat color="var(--blue)" label="Round" value={roundNumber} />
+                <Stat color="var(--red)" label="Found" value={`${foundCount}/10`} />
+                <Stat color="var(--yellow)" label="Total" value={totalScore.toLocaleString()} />
+                <Stat color="var(--green)" label="Round Score" value={roundScore.toLocaleString()} />
               </div>
-
             </div>
           </main>
 
-          {/* Desktop leaderboard & Live Feed */}
-          <aside className="hidden lg:flex game-sidebar flex-col h-full justify-between">
-            <div className="flex flex-col gap-3 overflow-y-auto mb-4" style={{ maxHeight: '45%' }}>
-              <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider border-b border-[var(--border)] pb-2 font-sans">
-                ROOM LEADERBOARD
+          {/* Desktop sidebar */}
+          <aside className="hidden lg:flex flex-col w-[300px] border-l border-[var(--border)] bg-[var(--surface)] px-6 py-7 gap-5 overflow-hidden">
+            <div className="flex flex-col gap-2.5 min-h-0" style={{ maxHeight: '50%' }}>
+              <p className="text-[10px] font-display font-bold text-[var(--text-muted)] uppercase tracking-[0.22em] border-b border-[var(--border)] pb-2">
+                Leaderboard
               </p>
-              <Leaderboard players={roomState.players} scores={roomState.scores ?? {}} myId={myId} />
+              <div className="overflow-y-auto pr-1">
+                <Leaderboard
+                  players={roomState.players}
+                  scores={roomState.scores ?? {}}
+                  myId={myId}
+                />
+              </div>
             </div>
-            
-            <div className="flex flex-col flex-1 border-t border-[var(--border)] pt-4 gap-3 overflow-hidden">
-              <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider border-b border-[var(--border)] pb-2 font-sans">
-                LIVE FEED
+
+            <div className="flex flex-col flex-1 border-t border-[var(--border)] pt-4 gap-2.5 overflow-hidden min-h-0">
+              <p className="text-[10px] font-display font-bold text-[var(--text-muted)] uppercase tracking-[0.22em] border-b border-[var(--border)] pb-2">
+                Live Feed
               </p>
               <GameChat chatMessages={chatMessages} />
             </div>
           </aside>
         </div>
 
-        {/* Bottom Guess Input */}
-        <div className="game-guess-container flex flex-col items-center">
+        {/* Footer / Guess Input */}
+        <div className="border-t border-[var(--border)] bg-[var(--surface)] px-5 md:px-8 py-4 flex flex-col items-center">
           <div className="w-full max-w-4xl flex flex-col gap-2">
             <GuessInput onGuess={handleGuess} disabled={!isPlaying} />
             <button
               onClick={() => setShowLeaderboard(true)}
-              className="lg:hidden text-xs text-[#1A73E8] hover:text-[#135ab7] transition-colors py-1 mt-1 font-bold"
+              className="lg:hidden text-[11px] text-[var(--primary)] hover:text-[var(--primary-2)] transition-colors py-1 mt-1 font-display font-bold uppercase tracking-[0.18em]"
             >
-              Show Feed & Leaderboard ↑
+              Scores & Live Feed ↑
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile leaderboard & Chat drawer */}
+      {/* Mobile drawer */}
       <AnimatePresence>
         {showLeaderboard && (
           <>
             <motion.div
-              className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+              className="fixed inset-0 bg-[rgba(15,23,42,0.45)] z-40 lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowLeaderboard(false)}
             />
             <motion.div
-              className="drawer lg:hidden p-5 bg-white"
+              className="drawer lg:hidden p-5"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="flex items-center justify-between mb-4 border-b border-[var(--border)] pb-2">
-                <p className="font-bold text-sm text-[#202124]">Scores & Live Feed</p>
-                <button onClick={() => setShowLeaderboard(false)} className="text-[#5F6368] text-2xl font-light">×</button>
+              <div className="flex items-center justify-between mb-4 border-b border-[var(--border)] pb-2.5">
+                <p className="font-display font-bold text-sm text-[var(--text)] uppercase tracking-[0.18em]">
+                  Scores & Live Feed
+                </p>
+                <button
+                  onClick={() => setShowLeaderboard(false)}
+                  className="text-[var(--text-muted)] hover:text-[var(--text)] text-2xl font-light w-8 h-8 flex items-center justify-center leading-none"
+                >
+                  ×
+                </button>
               </div>
               <div className="flex flex-col gap-4">
                 <Leaderboard players={roomState.players} scores={roomState.scores ?? {}} myId={myId} />
-                <div className="border-t border-[var(--border)] pt-4 flex flex-col gap-2">
-                  <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Live Feed</p>
+                <div className="border-t border-[var(--border)] pt-4 flex flex-col gap-2 min-h-[160px]">
+                  <p className="text-[10px] font-display font-bold text-[var(--text-muted)] uppercase tracking-[0.22em]">
+                    Live Feed
+                  </p>
                   <GameChat chatMessages={chatMessages} />
                 </div>
               </div>
@@ -185,5 +166,24 @@ export function GameScreen() {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+function Stat({ color, label, value }: { color: string; label: string; value: string | number }) {
+  return (
+    <div className="flex flex-col">
+      <span
+        className="text-[10px] md:text-[11px] font-display font-extrabold tracking-[0.18em] uppercase"
+        style={{ color }}
+      >
+        {label}
+      </span>
+      <span
+        className="text-xl md:text-3xl font-display font-extrabold mt-1 tabular leading-none"
+        style={{ color }}
+      >
+        {value}
+      </span>
+    </div>
   );
 }

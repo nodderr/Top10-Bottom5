@@ -1,218 +1,146 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @source "../**/*.{js,ts,jsx,tsx}";
 
+/* ============================================================
+   Design tokens
+   ============================================================ */
 :root {
-  --bg: #FFFFFF;
+  /* Surfaces — warmer-than-pure-white background reads less clinical
+     than #FFFFFF but stays in the Google Feud family. */
+  --bg: #FAFBFB;
   --surface: #FFFFFF;
-  --surface-2: #F8F9FA;
+  --surface-2: #F1F3F4;
+  --surface-3: #E8EAED;
+
   --border: #DADCE0;
   --border-strong: #BDC1C6;
-  --primary: #1A73E8; /* Google Blue */
-  --primary-text: #FFFFFF;
-  --success: #34A853; /* Google Green */
-  --danger: #EA4335; /* Google Red */
+
   --text: #202124;
   --text-muted: #5F6368;
   --text-dim: #80868B;
+
+  /* Google brand quartet — keep the playful four-color identity. */
+  --blue:   #1A73E8;
+  --blue-2: #1557B0;
+  --red:    #EA4335;
+  --yellow: #FBBC05;
+  --green:  #34A853;
+
+  /* Semantic aliases */
+  --primary:      var(--blue);
+  --primary-2:    var(--blue-2);
+  --primary-text: #FFFFFF;
+  --success:      var(--green);
+  --danger:       var(--red);
+  --warning:      var(--yellow);
+
+  /* Shadows tuned for square corners — soft, not floaty. */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.05);
+  --shadow:    0 4px 12px rgba(15, 23, 42, 0.06), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.08), 0 4px 10px rgba(15, 23, 42, 0.04);
 }
 
+/* Map Tailwind v4 theme to our tokens + next/font variables. */
+@theme {
+  --font-display: var(--font-display), 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body:    var(--font-body),    'Geist', system-ui, sans-serif;
+  --font-mono:    var(--font-mono),    'Geist Mono', ui-monospace, monospace;
+  --color-blue:   #1A73E8;
+  --color-red:    #EA4335;
+  --color-yellow: #FBBC05;
+  --color-green:  #34A853;
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
   background: var(--bg);
   color: var(--text);
-  font-family: Arial, sans-serif;
-  min-height: 100vh;
+  font-family: var(--font-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-.font-display { font-family: 'Outfit', sans-serif; }
+body { min-height: 100vh; }
 
-/* ---- Scrollbar ---- */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+/* Selection color picks up the brand blue. */
+::selection { background: rgba(26, 115, 232, 0.18); color: var(--text); }
 
-/* ---- Answer card reveal ---- */
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* Slim scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* Tabular numerals for scores / timers. */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* ============================================================
+   Utility helpers
+   ============================================================ */
+
+/* Subtle dot grid backdrop — used on landing + lobby for character.
+   Cheap (single CSS gradient), no GPU cost, breaks the flat white. */
+.bg-dotgrid {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(60, 64, 67, 0.08) 1px, transparent 0);
+  background-size: 24px 24px;
 }
-.answer-reveal { animation: slide-up 0.2s ease-out forwards; }
 
-/* ---- Score pop ---- */
-@keyframes score-pop {
-  0%   { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-24px); }
+/* Confetti piece — used by Confetti component. */
+.confetti-piece {
+  position: absolute;
+  width: 10px;
+  height: 14px;
+  top: 50%;
+  left: 50%;
+  pointer-events: none;
+  will-change: transform, opacity;
 }
-.score-pop { animation: score-pop 1.2s ease-out forwards; }
 
-/* ---- Timer urgency blink ---- */
-@keyframes blink {
+/* ============================================================
+   Keyframes (the few animations CSS handles natively;
+   most motion is via Framer Motion in components)
+   ============================================================ */
+@keyframes blink-urgent {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
+  50%      { opacity: 0.45; }
 }
-.timer-urgent { animation: blink 0.7s ease-in-out infinite; }
+.timer-urgent { animation: blink-urgent 0.7s ease-in-out infinite; }
 
-/* ---- Toast ---- */
-@keyframes toast-in {
-  from { opacity: 0; transform: translateX(20px); }
-  to   { opacity: 1; transform: translateX(0); }
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
-.toast-enter { animation: toast-in 0.2s ease-out forwards; }
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(0,0,0,0) 0%,
+    rgba(26, 115, 232, 0.08) 50%,
+    rgba(0,0,0,0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
 
-/* ---- Mobile drawer ---- */
+@keyframes float-up {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.float-up { animation: float-up 0.3s ease-out forwards; }
+
+/* Mobile drawer */
 .drawer {
   position: fixed;
   bottom: 0; left: 0; right: 0;
   background: var(--surface);
   border-top: 1px solid var(--border);
   z-index: 50;
-  max-height: 65vh;
+  max-height: 70vh;
   overflow-y: auto;
-}
-
-/* ============================================================
-   Custom UI Framework Styles - Enforced Symmetry & Square Layouts
-   ============================================================ */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.6) !important;
-  z-index: 40;
-}
-
-.modal-container {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px !important;
-}
-
-.modal-card {
-  background-color: var(--surface) !important;
-  border: 1px solid var(--border-strong) !important;
-  border-radius: 0px !important; /* Strictly square corners */
-  width: 100%;
-  max-width: 440px !important;
-  padding: 32px !important; /* Perfect symmetric padding */
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
-  box-sizing: border-box !important;
-}
-
-.modal-header {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  margin-bottom: 24px !important; /* Perfect spacing below header */
-  width: 100% !important;
-}
-
-.modal-title {
-  font-family: Arial, sans-serif !important;
-  font-weight: 700 !important;
-  font-size: 20px !important;
-  color: var(--text) !important;
-}
-
-.modal-close-btn {
-  color: var(--text-muted) !important;
-  font-size: 24px !important;
-  width: 32px !important;
-  height: 32px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  cursor: pointer !important;
-  background: transparent !important;
-  border: none !important;
-}
-
-.modal-close-btn:hover {
-  color: var(--text) !important;
-}
-
-.modal-body {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 20px !important; /* Unified spacing between input, options, buttons */
-  width: 100% !important;
-}
-
-/* Symmetric spacing/padding defaults for input wrapper */
-.input-wrapper {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 8px !important;
-  width: 100% !important;
-}
-
-/* ============================================================
-   Game Layout Styles - Enforced Spacing & Margins
-   ============================================================ */
-.game-header {
-  border-bottom: 1px solid var(--border) !important;
-  padding: 18px 32px !important; /* Balanced header padding */
-  background-color: #F8F9FA !important;
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  width: 100% !important;
-}
-
-.game-main {
-  flex: 1 !important;
-  overflow-y: auto !important;
-  padding: 40px 32px !important; /* Symmetric margins around the board */
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  box-sizing: border-box !important;
-}
-
-.game-sidebar {
-  display: flex !important;
-  flex-direction: column !important;
-  width: 288px !important;
-  border-left: 1px solid var(--border) !important;
-  padding: 32px 24px !important; /* Symmetric sidebar margins */
-  gap: 20px !important;
-  background-color: #F8F9FA !important;
-  overflow-y: auto !important;
-  box-sizing: border-box !important;
-}
-
-.game-guess-container {
-  border-top: 1px solid var(--border) !important;
-  background-color: #F8F9FA !important;
-  padding: 24px 32px !important; /* Balanced bottom bar spacing */
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-/* Enforced Answer Card Padding */
-.answer-card {
-  display: flex !important;
-  align-items: center !important;
-  height: 56px !important; /* 14 * 4px */
-  border-bottom: 1px solid var(--border) !important;
-  padding: 0 24px !important; /* Symmetric horizontal margins inside cells */
-  background-color: #FFFFFF !important;
-  transition: background-color 0.15s ease !important;
-  box-sizing: border-box !important;
-}
-
-.answer-card:hover {
-  background-color: #F8F9FA !important;
-}
-
-.answer-card:last-child {
-  border-bottom: none !important;
 }

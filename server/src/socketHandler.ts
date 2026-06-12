@@ -205,7 +205,7 @@ export function registerHandlers(io: Server, socket: Socket): void {
       socket.emit('room_updated', buildRoomState(room));
 
       console.log(`[Room] Created ${room.code} by ${name}`);
-    } catch (err) {
+    } catch {
       socket.emit('error', { message: 'Failed to create room.' });
     }
   });
@@ -301,7 +301,7 @@ export function registerHandlers(io: Server, socket: Socket): void {
       });
 
       console.log(`[Room] ${name} joined ${code} (state=${updatedRoom.state})`);
-    } catch (err) {
+    } catch {
       socket.emit('error', { message: 'Failed to join room.' });
     }
   });
@@ -319,7 +319,7 @@ export function registerHandlers(io: Server, socket: Socket): void {
 
       roomUsedThemes.set(code, []); // reset theme tracking
       await startNewRound(io, room);
-    } catch (err) {
+    } catch {
       socket.emit('error', { message: 'Failed to start game.' });
     }
   });
@@ -398,7 +398,7 @@ export function registerHandlers(io: Server, socket: Socket): void {
         updatedRoom.state = 'round_end';
         setTimeout(() => endRound(io, updatedRoom), 500);
       }
-    } catch (err) {
+    } catch {
       socket.emit('guess_result', { success: false, message: 'Error processing guess.' });
     }
   });
@@ -414,7 +414,7 @@ export function registerHandlers(io: Server, socket: Socket): void {
       if (room.state !== 'round_end') { socket.emit('error', { message: 'Round has not ended yet.' }); return; }
 
       await startNewRound(io, room);
-    } catch (err) {
+    } catch {
       socket.emit('error', { message: 'Failed to start next round.' });
     }
   });
@@ -437,7 +437,7 @@ export function registerHandlers(io: Server, socket: Socket): void {
       roomUsedThemes.set(code, []);
 
       io.to(code).emit('room_updated', buildRoomState(room));
-    } catch (err) {
+    } catch {
       socket.emit('error', { message: 'Failed to restart.' });
     }
   });
