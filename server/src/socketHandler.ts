@@ -226,10 +226,6 @@ export function registerHandlers(io: Server, socket: Socket): void {
         socket.emit('error', { message: 'Room not found. Check the code and try again.' });
         return;
       }
-      if (room.state !== 'waiting') {
-        socket.emit('error', { message: 'Game already in progress. Ask your friends to start a new room.' });
-        return;
-      }
       if (room.players.length >= 12) {
         socket.emit('error', { message: 'Room is full (max 12 players).' });
         return;
@@ -248,15 +244,63 @@ export function registerHandlers(io: Server, socket: Socket): void {
       io.to(code).emit('player_joined', { player, roomState: buildRoomState(updatedRoom) });
       io.to(code).emit('room_updated', buildRoomState(updatedRoom));
 
+      // Mid-game join — replay the events the joiner missed so they land in the
+      // correct screen with full context. Everyone already in the room ignores these
+      // because they're emitted to the joiner's socket only.
+      if (updatedRoom.state !== 'waiting' && updatedRoom.roundData) {
+        const rd = updatedRoom.roundData;
+        if (updatedRoom.state === 'playing' || updatedRoom.state === 'generating') {
+          socket.emit('game_started', {
+            category: rd.category,
+            totalAnswers: 10,
+            roundNumber: rd.roundNumber,
+            totalRounds: updatedRoom.totalRounds,
+            timerSeconds: rd.timerSeconds,
+          });
+          if (rd.revealed.length > 0) {
+            socket.emit('answer_revealed', {
+              revealed: rd.revealed[rd.revealed.length - 1],
+              allRevealed: rd.revealed,
+              scores: updatedRoom.scores,
+              players: updatedRoom.players,
+            });
+          }
+        } else if (updatedRoom.state === 'round_end' || updatedRoom.state === 'game_end') {
+          const roundWinner = rm.getRoundWinner(code);
+          const isLastRound = updatedRoom.currentRound >= updatedRoom.totalRounds;
+          socket.emit('round_end', {
+            category: rd.category,
+            allAnswers: rd.answers,
+            revealed: rd.revealed,
+            scores: updatedRoom.scores,
+            players: updatedRoom.players,
+            roundWinnerId: roundWinner?.id ?? null,
+            roundWinnerName: roundWinner?.name ?? null,
+            roundNumber: updatedRoom.currentRound,
+            isLastRound,
+          });
+          if (updatedRoom.state === 'game_end') {
+            const gameWinner = rm.getGameWinner(code);
+            socket.emit('game_end', {
+              scores: updatedRoom.scores,
+              players: updatedRoom.players,
+              winnerId: gameWinner?.id ?? null,
+              winnerName: gameWinner?.name ?? null,
+            });
+          }
+        }
+      }
+
+      const joinedWhere = updatedRoom.state === 'waiting' ? 'the lobby' : 'mid-game';
       io.to(code).emit('chat_message', {
         id: Math.random().toString(36).substring(2, 9),
         sender: 'System',
-        text: `${name} joined the lobby`,
+        text: `${name} joined ${joinedWhere}`,
         type: 'system',
         timestamp: Date.now(),
       });
 
-      console.log(`[Room] ${name} joined ${code}`);
+      console.log(`[Room] ${name} joined ${code} (state=${updatedRoom.state})`);
     } catch (err) {
       socket.emit('error', { message: 'Failed to join room.' });
     }

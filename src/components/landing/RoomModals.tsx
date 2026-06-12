@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Modal, Button, Input } from '@/components/ui';
 import { useRoom } from '@/hooks/useRoom';
@@ -145,12 +145,16 @@ export function JoinRoomModal({
   const [errors, setErrors] = useState<{ name?: string; code?: string }>({});
   const router = useRouter();
   const { joinRoom, roomCode, roomState } = useRoom();
+  // Track that THIS modal just submitted a join — otherwise stale roomState
+  // from a previous session could fire the redirect on mount.
+  const justSubmitted = useRef(false);
 
   useEffect(() => {
-    if (roomCode && roomState?.state === 'waiting') {
+    if (justSubmitted.current && roomCode && roomState) {
+      justSubmitted.current = false;
       router.push(`/room/${roomCode}`);
     }
-  }, [roomCode, roomState?.state, router]);
+  }, [roomCode, roomState, router]);
 
   const handle = () => {
     const t = name.trim();
@@ -161,6 +165,7 @@ export function JoinRoomModal({
     if (Object.keys(e).length) { setErrors(e); return; }
     setLoading(true);
     setErrors({});
+    justSubmitted.current = true;
     joinRoom(c, t);
     setTimeout(() => setLoading(false), 6000);
   };

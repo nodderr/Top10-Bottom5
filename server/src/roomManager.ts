@@ -93,7 +93,6 @@ export function deleteRoom(code: string): void {
 export function addPlayer(code: string, playerId: string, playerName: string): Room | null {
   const room = getRoom(code);
   if (!room) return null;
-  if (room.state !== 'waiting') return null;
 
   // Prevent duplicate socket IDs
   if (room.players.find((p) => p.id === playerId)) return room;
