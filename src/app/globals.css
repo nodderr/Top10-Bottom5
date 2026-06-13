@@ -3,8 +3,20 @@
 
 /* ============================================================
    Design tokens
+   ------------------------------------------------------------
+   Two themes live in one variable contract. Components read
+   semantic tokens (--bg, --surface, --primary, --shadow, etc.)
+   only — never the raw hex — so flipping data-theme="dark" on
+   <html> retones the entire app without touching component CSS.
+
+   "Light"  → Google-Feud-warm, clinical-but-friendly.
+   "Dark"   → "Late Shift" — deep cool charcoal with the brand
+             quartet luminance-bumped so they read as glowing
+             phosphor against the low-light surfaces.
    ============================================================ */
-:root {
+:root, [data-theme="light"] {
+  color-scheme: light;
+
   /* Surfaces — warmer-than-pure-white background reads less clinical
      than #FFFFFF but stays in the Google Feud family. */
   --bg: #FAFBFB;
@@ -39,6 +51,103 @@
   --shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.05);
   --shadow:    0 4px 12px rgba(15, 23, 42, 0.06), 0 2px 4px rgba(15, 23, 42, 0.04);
   --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.08), 0 4px 10px rgba(15, 23, 42, 0.04);
+
+  /* Theme-conditional rgba primitives. Effects (dot grid, selection,
+     shimmer, scrollbar) reference these so they read correctly on the
+     active background without hardcoding a color literal. */
+  --grid-dot:        rgba(60, 64, 67, 0.08);
+  --selection-bg:    rgba(26, 115, 232, 0.18);
+  --scroll-thumb:    var(--border-strong);
+  --scroll-thumb-hi: var(--text-dim);
+  --shimmer-tint:    rgba(26, 115, 232, 0.08);
+  --overlay:         rgba(15, 23, 42, 0.55);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surfaces — a layered cool-charcoal stack. Not pure black: a hair
+     of blue makes the brand colors feel like they're glowing rather
+     than floating on a void. Each step up brightens just enough for
+     elevation to register without ever shouting. */
+  --bg:        #0B0E14;
+  --surface:   #131822;
+  --surface-2: #1B2030;
+  --surface-3: #252B3D;
+
+  --border:        #232A38;
+  --border-strong: #364056;
+
+  --text:       #ECEEF3;  /* warm-leaning off-white, not #FFFFFF */
+  --text-muted: #8E96A6;
+  --text-dim:   #5F6779;
+
+  /* Brand quartet, luminance-pushed for dark surfaces. Same identity,
+     louder voice. The blue-2 stays a touch darker than blue so primary
+     buttons still have a hover/pressed state that reads as "deeper."  */
+  --blue:   #5B9CFF;
+  --blue-2: #3B82F6;
+  --red:    #FF6B5B;
+  --yellow: #FFCE45;
+  --green:  #4ADE80;
+
+  /* Primary button text needs to stay legible on the brighter blue.
+     #0B0E14 is the page bg — using that as button text gives a high-
+     contrast inverse look that ties the button back to the surface. */
+  --primary:      var(--blue);
+  --primary-2:    var(--blue-2);
+  --primary-text: #0B0E14;
+  --success:      var(--green);
+  --danger:       var(--red);
+  --warning:      var(--yellow);
+
+  /* Shadows in dark mode aren't "lift" — they're "depth." Deeper blacks
+     under elements carve them out of the charcoal field. */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.5);
+  --shadow:    0 6px 18px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.65), 0 6px 14px rgba(0, 0, 0, 0.45);
+
+  /* Effect primitives flipped for the dark field. */
+  --grid-dot:        rgba(255, 255, 255, 0.045);
+  --selection-bg:    rgba(91, 156, 255, 0.32);
+  --scroll-thumb:    #2C3445;
+  --scroll-thumb-hi: #475061;
+  --shimmer-tint:    rgba(91, 156, 255, 0.10);
+  --overlay:         rgba(0, 0, 0, 0.72);
+}
+
+/* Honor system preference when the user hasn't picked a theme. The
+   inline anti-flash script in layout.tsx writes data-theme explicitly
+   only when the user has chosen — so this query covers first-load. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --bg:        #0B0E14;
+    --surface:   #131822;
+    --surface-2: #1B2030;
+    --surface-3: #252B3D;
+    --border:        #232A38;
+    --border-strong: #364056;
+    --text:       #ECEEF3;
+    --text-muted: #8E96A6;
+    --text-dim:   #5F6779;
+    --blue:   #5B9CFF;
+    --blue-2: #3B82F6;
+    --red:    #FF6B5B;
+    --yellow: #FFCE45;
+    --green:  #4ADE80;
+    --primary-text: #0B0E14;
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.45);
+    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.5);
+    --shadow:    0 6px 18px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.65), 0 6px 14px rgba(0, 0, 0, 0.45);
+    --grid-dot:        rgba(255, 255, 255, 0.045);
+    --selection-bg:    rgba(91, 156, 255, 0.32);
+    --scroll-thumb:    #2C3445;
+    --scroll-thumb-hi: #475061;
+    --shimmer-tint:    rgba(91, 156, 255, 0.10);
+  }
 }
 
 /* Map Tailwind v4 theme to our tokens + next/font variables. */
@@ -64,18 +173,20 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  /* Theme switches feel like a deliberate dimmer, not a snap-flash. */
+  transition: background-color 220ms ease, color 220ms ease;
 }
 
 body { min-height: 100vh; }
 
 /* Selection color picks up the brand blue. */
-::selection { background: rgba(26, 115, 232, 0.18); color: var(--text); }
+::selection { background: var(--selection-bg); color: var(--text); }
 
 /* Slim scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 0; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hi); }
 
 /* Tabular numerals for scores / timers. */
 .tabular { font-variant-numeric: tabular-nums; }
@@ -88,7 +199,7 @@ body { min-height: 100vh; }
    Cheap (single CSS gradient), no GPU cost, breaks the flat white. */
 .bg-dotgrid {
   background-image:
-    radial-gradient(circle at 1px 1px, rgba(60, 64, 67, 0.08) 1px, transparent 0);
+    radial-gradient(circle at 1px 1px, var(--grid-dot) 1px, transparent 0);
   background-size: 24px 24px;
 }
 
@@ -121,7 +232,7 @@ body { min-height: 100vh; }
   background: linear-gradient(
     90deg,
     rgba(0,0,0,0) 0%,
-    rgba(26, 115, 232, 0.08) 50%,
+    var(--shimmer-tint) 50%,
     rgba(0,0,0,0) 100%
   );
   background-size: 200% 100%;

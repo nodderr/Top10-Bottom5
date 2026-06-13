@@ -131,7 +131,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       {isOpen && (
         <>
           <motion.div
-            className="fixed inset-0 z-40 bg-[rgba(15,23,42,0.55)] backdrop-blur-[2px]"
+            className="fixed inset-0 z-40 bg-[var(--overlay)] backdrop-blur-[2px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

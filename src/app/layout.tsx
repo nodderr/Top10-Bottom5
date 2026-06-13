@@ -37,12 +37,25 @@ export const metadata: Metadata = {
   },
 };
 
+// Runs synchronously in <head> before first paint. Reads the stored theme
+// (or falls back to the OS preference) and stamps data-theme onto <html>
+// so the CSS variables are resolved before any pixels hit the screen —
+// no white-flash-then-dark flicker on hard refresh.
+const themeBootScript = `(function(){try{var s=localStorage.getItem('t10b5-theme');var t=s==='light'||s==='dark'?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // SSR the current user so there's no logged-in flash on first paint.
   const initialUser = await getCurrentUser();
 
   return (
-    <html lang="en" className={`${bricolage.variable} ${geist.variable} ${geistMono.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${bricolage.variable} ${geist.variable} ${geistMono.variable}`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
       <body className="antialiased font-body bg-[var(--bg)] text-[var(--text)]">
         <AuthProvider initialUser={initialUser}>
           <SiteHeader />

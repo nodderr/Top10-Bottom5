@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useTransition } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { MyRating } from './MyRating';
+import { ThemeToggle } from './ThemeToggle';
 
 // Hidden inside an active game so the header doesn't compete with the round HUD.
 const HIDE_PATTERNS = [/^\/room\//];
@@ -15,6 +16,9 @@ export function SiteHeader() {
   const { user, loading, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  // Leaderboard SSRs a heavy page (profile prefetch + chart). Show a spinner
+  // while the App Router transition is pending so the click feels responsive.
+  const [leaderboardPending, startLeaderboardTransition] = useTransition();
 
   // Outside-click to close the dropdown.
   useEffect(() => {
@@ -47,17 +51,27 @@ export function SiteHeader() {
         </Link>
 
         <nav className="flex items-center gap-1 md:gap-2">
+          <ThemeToggle />
           <MyRating />
-          <Link
-            href="/leaderboard"
-            className={`px-2.5 py-1.5 text-[11px] md:text-xs font-display font-bold uppercase tracking-[0.2em] transition-colors ${
+          <button
+            onClick={() => {
+              if (pathname === '/leaderboard' || leaderboardPending) return;
+              startLeaderboardTransition(() => {
+                router.push('/leaderboard');
+              });
+            }}
+            disabled={leaderboardPending}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] md:text-xs font-display font-bold uppercase tracking-[0.2em] transition-colors ${
               pathname === '/leaderboard'
                 ? 'text-[var(--text)]'
                 : 'text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}
           >
             Leaderboard
-          </Link>
+            {leaderboardPending && (
+              <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+            )}
+          </button>
 
           {loading ? (
             <span className="w-6 h-6 border-2 border-[var(--border)] border-t-[var(--primary)] rounded-full animate-spin" />

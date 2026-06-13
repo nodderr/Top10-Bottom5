@@ -144,7 +144,7 @@ export function GameScreen() {
         {showLeaderboard && (
           <>
             <motion.div
-              className="fixed inset-0 bg-[rgba(15,23,42,0.45)] z-40 lg:hidden"
+              className="fixed inset-0 bg-[var(--overlay)] z-40 lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
