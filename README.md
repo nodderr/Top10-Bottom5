@@ -21,7 +21,7 @@
 | Frontend | Next.js 15, TypeScript, TailwindCSS, Framer Motion |
 | Real-time | Socket.io |
 | Backend | Express + Socket.io (Node.js) |
-| AI | Gemini 1.5 Flash |
+| AI | Gemini 3.1 Flash Lite |
 | Frontend hosting | Vercel |
 | Backend hosting | Render.com (free, self-pinging) |
 
