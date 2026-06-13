@@ -117,38 +117,9 @@
   --overlay:         rgba(0, 0, 0, 0.72);
 }
 
-/* Honor system preference when the user hasn't picked a theme. The
-   inline anti-flash script in layout.tsx writes data-theme explicitly
-   only when the user has chosen — so this query covers first-load. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
-    color-scheme: dark;
-    --bg:        #0B0E14;
-    --surface:   #131822;
-    --surface-2: #1B2030;
-    --surface-3: #252B3D;
-    --border:        #232A38;
-    --border-strong: #364056;
-    --text:       #ECEEF3;
-    --text-muted: #8E96A6;
-    --text-dim:   #5F6779;
-    --blue:   #5B9CFF;
-    --blue-2: #3B82F6;
-    --red:    #FF6B5B;
-    --yellow: #FFCE45;
-    --green:  #4ADE80;
-    --primary-text: #0B0E14;
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.45);
-    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.5);
-    --shadow:    0 6px 18px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.65), 0 6px 14px rgba(0, 0, 0, 0.45);
-    --grid-dot:        rgba(255, 255, 255, 0.045);
-    --selection-bg:    rgba(91, 156, 255, 0.32);
-    --scroll-thumb:    #2C3445;
-    --scroll-thumb-hi: #475061;
-    --shimmer-tint:    rgba(91, 156, 255, 0.10);
-  }
-}
+/* Default theme is light — set explicitly by the anti-flash script in
+   layout.tsx. Dark mode is opt-in via the header toggle; OS preference
+   is deliberately not auto-applied. */
 
 /* Map Tailwind v4 theme to our tokens + next/font variables. */
 @theme {

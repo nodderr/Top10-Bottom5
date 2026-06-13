@@ -9,7 +9,8 @@ function readInitialTheme(): Theme {
   if (typeof document === 'undefined') return 'light';
   const attr = document.documentElement.getAttribute('data-theme');
   if (attr === 'light' || attr === 'dark') return attr;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  // Default is light. Dark is opt-in via this toggle; OS preference is ignored.
+  return 'light';
 }
 
 /**

@@ -38,10 +38,10 @@ export const metadata: Metadata = {
 };
 
 // Runs synchronously in <head> before first paint. Reads the stored theme
-// (or falls back to the OS preference) and stamps data-theme onto <html>
-// so the CSS variables are resolved before any pixels hit the screen —
-// no white-flash-then-dark flicker on hard refresh.
-const themeBootScript = `(function(){try{var s=localStorage.getItem('t10b5-theme');var t=s==='light'||s==='dark'?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
+// and stamps data-theme onto <html> so CSS variables are resolved before
+// any pixels hit the screen. Default is light — the OS preference is
+// intentionally ignored; dark mode is opt-in via the header toggle.
+const themeBootScript = `(function(){try{var s=localStorage.getItem('t10b5-theme');var t=(s==='light'||s==='dark')?s:'light';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // SSR the current user so there's no logged-in flash on first paint.
