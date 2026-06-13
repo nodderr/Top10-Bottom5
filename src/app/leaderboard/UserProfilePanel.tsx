@@ -29,6 +29,13 @@ function initials(name: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+function ordinal(n: number) {
+  const lastTwo = n % 100;
+  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
+  const lastOne = n % 10;
+  return `${n}${lastOne === 1 ? 'st' : lastOne === 2 ? 'nd' : lastOne === 3 ? 'rd' : 'th'}`;
+}
+
 function shortDate(iso: string | null) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString(undefined, {
@@ -222,19 +229,10 @@ export function UserProfilePanel({ handle, cachedProfile }: Props) {
           <Stat label="Games" value={data.gamesPlayed.toLocaleString()} accent="var(--blue)" />
           <Stat label="Rounds" value={data.roundsPlayed.toLocaleString()} accent="var(--blue)" />
           <Stat
-            label="Avg Δ / round"
-            value={
-              data.avgDeltaPerRound !== null
-                ? (data.avgDeltaPerRound > 0 ? '+' : '') + data.avgDeltaPerRound.toFixed(1)
-                : '—'
-            }
-            accent={
-              data.avgDeltaPerRound === null
-                ? 'var(--text-muted)'
-                : data.avgDeltaPerRound >= 0
-                ? 'var(--success)'
-                : 'var(--danger)'
-            }
+            label="Peak ranking"
+            value={data.peakRank ? ordinal(data.peakRank.rank) : '—'}
+            sub={data.peakRank ? shortDate(data.peakRank.achievedAt) : 'no rounds yet'}
+            accent={data.peakRank ? 'var(--green)' : 'var(--text-muted)'}
           />
         </div>
         <p className="text-[11px] font-medium text-[var(--text-muted)] mt-4 pt-3 border-t border-[var(--border)]">

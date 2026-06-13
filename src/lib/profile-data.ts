@@ -37,7 +37,11 @@ export interface ProfileData {
   ratingDelta7d: number | null;
   winRate: number;
   bestRoundScore: number | null;
-  avgDeltaPerRound: number | null;
+  /**
+   * Best round-finish position (1 = won the round) and the date it was first
+   * achieved. Null when the user has no completed rounds.
+   */
+  peakRank: { rank: number; achievedAt: string } | null;
   /** Full timeline (no range filter). Client-side chips slice it. */
   timeline: TimelinePoint[];
   recentGames: RecentGame[];
@@ -58,7 +62,8 @@ interface SummaryRow {
   win_rounds: number | null;
   total_rounds: number | null;
   best_score: number | null;
-  avg_delta: string | null;
+  peak_rank: number | null;
+  peak_rank_at: Date | null;
   rating_7d_ago: number | null;
 }
 
@@ -106,11 +111,23 @@ export async function loadProfilesByHandle(
          select rr.user_id,
                 sum(case when rr.rank = 1 then 1 else 0 end)::int as win_rounds,
                 count(*)::int as total_rounds,
-                max(rr.score)::int as best_score,
-                avg(rr.rating_delta)::numeric(10,2) as avg_delta
+                max(rr.score)::int as best_score
          from public.round_results rr
          where rr.user_id = any($1::uuid[])
          group by rr.user_id
+       ),
+       peak_rank as (
+         -- Lowest rr.rank value the user ever achieved (1 = best). Tie-broken by
+         -- earliest occurrence so the date reflects when they first hit it.
+         select distinct on (rr.user_id)
+                rr.user_id,
+                rr.rank as peak_rank,
+                rr.created_at as peak_rank_at
+           from public.round_results rr
+          where rr.user_id = any($1::uuid[])
+            and rr.rank is not null
+            and rr.rank > 0
+          order by rr.user_id, rr.rank asc, rr.created_at asc
        ),
        rating_7d as (
          select distinct on (rr.user_id) rr.user_id, rr.rating_after
@@ -122,11 +139,13 @@ export async function loadProfilesByHandle(
        select u.id as user_id, u.handle, u.display_name, u.created_at,
               r.rating, r.peak_rating, r.games_played, r.rounds_played, r.last_played,
               r.rnk, r.total::int,
-              s.win_rounds, s.total_rounds, s.best_score, s.avg_delta,
+              s.win_rounds, s.total_rounds, s.best_score,
+              pr.peak_rank, pr.peak_rank_at,
               r7.rating_after as rating_7d_ago
          from public.users u
          join ranked r on r.user_id = u.id
          left join summary s on s.user_id = u.id
+         left join peak_rank pr on pr.user_id = u.id
          left join rating_7d r7 on r7.user_id = u.id
         where u.id = any($1::uuid[])`,
       [userIds],
@@ -204,9 +223,13 @@ export async function loadProfilesByHandle(
       s.total_rounds && s.total_rounds > 0
         ? Number(s.win_rounds ?? 0) / Number(s.total_rounds)
         : 0;
-    const avgDelta = s.avg_delta != null ? Number(s.avg_delta) : null;
     const ratingDelta7d =
       s.rating_7d_ago != null ? s.rating - Number(s.rating_7d_ago) : null;
+
+    const peakRank =
+      s.peak_rank != null && s.peak_rank_at != null
+        ? { rank: s.peak_rank, achievedAt: s.peak_rank_at.toISOString() }
+        : null;
 
     profiles.set(s.handle, {
       handle: s.handle,
@@ -222,7 +245,7 @@ export async function loadProfilesByHandle(
       ratingDelta7d,
       winRate,
       bestRoundScore: s.best_score ?? null,
-      avgDeltaPerRound: avgDelta,
+      peakRank,
       timeline: timelineByUser.get(s.user_id) ?? [],
       recentGames: recentByUser.get(s.user_id) ?? [],
     });

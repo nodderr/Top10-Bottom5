@@ -37,7 +37,8 @@ interface SummaryRow {
   win_rounds: number;
   total_rounds: number;
   best_score: number | null;
-  avg_delta: number | null;
+  peak_rank: number | null;
+  peak_rank_at: Date | null;
   rating_7d_ago: number | null;
 }
 
@@ -108,13 +109,32 @@ export async function GET(
          coalesce(sum(case when rr.rank = 1 then 1 else 0 end), 0)::int as win_rounds,
          count(*)::int as total_rounds,
          max(rr.score)::int as best_score,
-         avg(rr.rating_delta)::numeric(10,2) as avg_delta,
          (
-           select rr2.rating_after
+           -- Lowest rank ever (1 = won the round). Tie-broken by earliest
+           -- timestamp so the "achieved" date is the first time it happened.
+           select rr2.rank
              from public.round_results rr2
             where rr2.user_id = $1
-              and rr2.created_at <= now() - interval '7 days'
-            order by rr2.created_at desc
+              and rr2.rank is not null
+              and rr2.rank > 0
+            order by rr2.rank asc, rr2.created_at asc
+            limit 1
+         ) as peak_rank,
+         (
+           select rr3.created_at
+             from public.round_results rr3
+            where rr3.user_id = $1
+              and rr3.rank is not null
+              and rr3.rank > 0
+            order by rr3.rank asc, rr3.created_at asc
+            limit 1
+         ) as peak_rank_at,
+         (
+           select rr4.rating_after
+             from public.round_results rr4
+            where rr4.user_id = $1
+              and rr4.created_at <= now() - interval '7 days'
+            order by rr4.created_at desc
             limit 1
          ) as rating_7d_ago
        from public.round_results rr
@@ -171,7 +191,10 @@ export async function GET(
       ? Number(summary.win_rounds) / Number(summary.total_rounds)
       : 0;
 
-  const avgDelta = summary?.avg_delta != null ? Number(summary.avg_delta) : null;
+  const peakRank =
+    summary?.peak_rank != null && summary.peak_rank_at != null
+      ? { rank: summary.peak_rank, achievedAt: summary.peak_rank_at.toISOString() }
+      : null;
 
   const ratingDelta7d =
     rankRow && summary?.rating_7d_ago != null
@@ -192,7 +215,7 @@ export async function GET(
     ratingDelta7d,
     winRate,
     bestRoundScore: summary?.best_score ?? null,
-    avgDeltaPerRound: avgDelta,
+    peakRank,
     range,
     timeline: timelineQ.rows.map((r) => ({
       ts: r.ts.toISOString(),
