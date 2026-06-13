@@ -125,7 +125,10 @@ async function endRound(io: Server, room: Room): Promise<void> {
   const isLastRound = room.currentRound >= room.totalRounds;
   const roundWinner = rm.getRoundWinner(room.code);
 
-  room.state = isLastRound ? 'game_end' : 'round_end';
+  // Always land on round_end first — even on the final round — so players see
+  // the answer reveal. The transition to game_end happens when the host clicks
+  // "FINAL SCORES →" on RoundEndScreen, handled by the next_round event below.
+  room.state = 'round_end';
   room.lastActivityAt = Date.now();
 
   // Snapshot per-round scores (players[i].roundScore) for ELO. We use
@@ -157,13 +160,8 @@ async function endRound(io: Server, room: Room): Promise<void> {
   io.to(room.code).emit('room_updated', buildRoomState(room));
 
   if (isLastRound) {
-    const gameWinner = rm.getGameWinner(room.code);
-    io.to(room.code).emit('game_end', {
-      scores: room.scores,
-      players: room.players,
-      winnerId: gameWinner?.id ?? null,
-      winnerName: gameWinner?.name ?? null,
-    });
+    // Finalize DB state now (ended_at, games_played). The game_end socket
+    // emission is deferred until the host advances past the answer reveal.
     try {
       await finalizeGame(room);
     } catch (err) {
@@ -477,6 +475,22 @@ export function registerHandlers(io: Server, socket: Socket): void {
       if (!room) { socket.emit('error', { message: 'Room not found.' }); return; }
       if (room.hostId !== socket.id) { socket.emit('error', { message: 'Only the host can advance the round.' }); return; }
       if (room.state !== 'round_end') { socket.emit('error', { message: 'Round has not ended yet.' }); return; }
+
+      // After the final round, "advance" means transition to game_end (final
+      // scores), not generate another round.
+      if (room.currentRound >= room.totalRounds) {
+        room.state = 'game_end';
+        room.lastActivityAt = Date.now();
+        const gameWinner = rm.getGameWinner(code);
+        io.to(code).emit('game_end', {
+          scores: room.scores,
+          players: room.players,
+          winnerId: gameWinner?.id ?? null,
+          winnerName: gameWinner?.name ?? null,
+        });
+        io.to(code).emit('room_updated', buildRoomState(room));
+        return;
+      }
 
       await startNewRound(io, room);
     } catch {

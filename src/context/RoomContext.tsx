@@ -113,7 +113,7 @@ function reducer(state: RoomStoreState, action: Action): RoomStoreState {
       }
       return {
         ...state,
-        gameState: action.payload.isLastRound ? 'game_end' : 'round_end',
+        gameState: 'round_end',
         roundEndState: action.payload,
         roundState: state.roundState
           ? { ...state.roundState, allAnswers: action.payload.allAnswers }
