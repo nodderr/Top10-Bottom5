@@ -70,7 +70,7 @@ export function LeaderboardList({
                     <span className="text-lg md:text-xl">{MEDALS[e.rank - 1]}</span>
                   ) : (
                     <span className="font-display font-extrabold text-sm text-[var(--text-muted)] tabular">
-                      {e.rank}
+                      #{e.rank}
                     </span>
                   )}
                 </div>

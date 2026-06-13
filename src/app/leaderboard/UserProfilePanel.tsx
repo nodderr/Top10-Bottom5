@@ -29,13 +29,6 @@ function initials(name: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function ordinal(n: number) {
-  const lastTwo = n % 100;
-  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
-  const lastOne = n % 10;
-  return `${n}${lastOne === 1 ? 'st' : lastOne === 2 ? 'nd' : lastOne === 3 ? 'rd' : 'th'}`;
-}
-
 function shortDate(iso: string | null) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString(undefined, {
@@ -230,7 +223,7 @@ export function UserProfilePanel({ handle, cachedProfile }: Props) {
           <Stat label="Rounds" value={data.roundsPlayed.toLocaleString()} accent="var(--blue)" />
           <Stat
             label="Peak ranking"
-            value={data.peakRank ? ordinal(data.peakRank.rank) : '—'}
+            value={data.peakRank ? `#${data.peakRank.rank}` : '—'}
             sub={data.peakRank ? shortDate(data.peakRank.achievedAt) : 'no rounds yet'}
             accent={data.peakRank ? 'var(--green)' : 'var(--text-muted)'}
           />
